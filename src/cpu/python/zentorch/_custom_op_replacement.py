@@ -416,150 +416,6 @@ def vertical_mlp_fusion(fx_graph):
     return fx_graph
 
 
-def qkv_fusion(fx_graph):
-    # Fusing parallel matmuls in attention block which constitute
-    # key query value pair for LLM's.
-    logger.info("Detecting and executing QKV parallel ops.")
-    groups = {}
-
-    for node in fx_graph.nodes:
-        node_name = node.name
-        # Pattern check begins with finding the common node
-        # for the horizontal matmul pattern
-        if len(node.users) >= 3 and node.op != "placeholder":
-            for user in node.users.keys():
-                # This pattern is legit only if the output tensor of common node acts
-                # as input tensor of view ops, should not be used for specifying shape.
-                # HF models always have view before a matmul, hence harcoding the index.
-                if node is not user.args[0]:
-                    continue
-                # Skipping if there are no users present or if the user is a return node
-                if not bool(user.users.keys()):
-                    continue
-                user_node = list(user.users)[0]
-                # Adding the condition check to find the pattern where
-                # the node with number of users > 3 is linked via a
-                # convert element and a view to a matmul.
-                # Hence, 2 levels of check is required to reach matmul nodes.
-                if user_node.target == torch.ops.aten.view.default:
-                    user_node = list(user_node.users)[0]
-
-                # Append addmm/mm nodes to group
-                # Check if addmm/mm is unique to the dictionary
-                node_values = get_group_attr(user_node.target)
-                if node_values:
-                    groups.setdefault(node_name, {"nodes": []})["nodes"].append(
-                        user_node
-                    )
-    # Perform fusion and optimization
-    for group in groups.values():
-        # Check for attention block matmuls
-        # fuse only the first 3 matmuls: Query, Key, Value
-        group["nodes"] = group["nodes"][:3]
-
-        # Validate if all K,Q,V are of same target value
-        target_values = [(group["nodes"][i]).target for i in range(len(group["nodes"]))]
-        same_target = set(target_values)
-
-        # Checking only for K,Q,V pair hence hardcoded to 3
-        if len(same_target) == 1 and len(group["nodes"]) == 3:
-            # Checking if the nodes are inter-dependent
-            nodes_are_dependent = (
-                find_path(fx_graph, group["nodes"][0], group["nodes"][1])
-                or find_path(fx_graph, group["nodes"][1], group["nodes"][2])
-                or find_path(fx_graph, group["nodes"][0], group["nodes"][2])
-            )
-            if nodes_are_dependent:
-                logger.info(
-                    "QKV nodes are not independent of each other, cannot perform fusion"
-                )
-                continue
-            group_op_args = [[] for _ in range(7)]
-            first_node = group["nodes"][0]
-
-            # Update the group attributes
-            node_values = get_group_attr(first_node.target)
-            group.update(node_values)
-
-            # Check if node is zentorch_addmm_1d_bias or zentorch_mm.
-            # zentorch_mm has only 2 arguments, whereas zentorch_addmm has 3.
-            # create an empty node to replicate the arg structure of addmm.
-            if len(first_node.args) == 2:
-                # take arbitrary shape value for the empty_node being created
-                # from the previous node. HF LLMs have view as the previous node.
-                # Type checking the arguments for first_node
-                shape = first_node.args[0].args[1]
-                if isinstance(shape, (list, tuple)):
-                    empty_shape = [list(shape)]
-                elif isinstance(shape, int):
-                    empty_shape = [[shape]]
-                else:
-                    raise TypeError(
-                        f"Unexpected type for shape: {type(shape)}. "
-                        "Expected list, tuple, or int."
-                    )
-                empty_node_args = tuple(empty_shape)
-                empty_node = fx_graph.create_node(
-                    op="call_function",
-                    target=torch.ops.aten.empty.memory_format,
-                    args=(empty_node_args),
-                )
-                first_node.prepend(empty_node)
-            # Prepare argument list for the fused op
-            for node in group["nodes"]:
-                if len(node.args) == 2:
-                    group_op_args[0].append(empty_node)
-                for i, arg in enumerate(node.args):
-                    if len(node.args) == 2:
-                        group_op_args[i + 1].append(arg)
-                    else:
-                        group_op_args[i].append(arg)
-                # iterate through kwargs to append node's value, if present in graph,
-                # else append the default value
-                for kwarg in ["alpha", "beta", "is_zentorch_mm"]:
-                    if group[kwarg] in node.kwargs:
-                        group_op_args[group[kwarg][1]].append(node.kwargs[kwarg])
-                    else:
-                        group_op_args[group[kwarg][1]].append(group[kwarg][0])
-                # Update fuse values.
-                group_op_args[5].append(get_fuse_val(node.target))
-            # Create zentorch_attn_qkv_fusion node
-            group_node = fx_graph.create_node(
-                op="call_function",
-                target=zt_ops.zentorch_attn_qkv_fusion.default,
-                args=tuple(group_op_args),
-            )
-            first_node.prepend(group_node)
-
-            # Incrementing the fusion counter
-            counters["zentorch"]["qkv_fusion"] += 1
-
-            # Creating getitem nodes to parse the output vector.
-            getitem_nodes = []
-            for getitem_num in range(3):
-                new_node = fx_graph.create_node(
-                    op="call_function",
-                    target=operator.getitem,
-                    args=(group_node, getitem_num),
-                )
-                group_node.append(new_node)  # FX API
-                getitem_nodes.append(new_node)  # LIST API
-            for i, node in enumerate(group["nodes"]):
-                node.replace_all_uses_with(getitem_nodes[i])
-                fx_graph.erase_node(node)
-
-            # sort graph topologically
-            stable_topological_sort(fx_graph)
-            fx_graph.lint()
-        else:
-            logger.info(
-                "Horizontal Group fusion not possible with the current \
-                            combination of addmm/mm layers"
-            )
-
-    return fx_graph
-
-
 def eb_group_mlp_group_fusion(fx_graph):
     logger.info(
         "Fusing the horizontally fused EmbeddingBag op and the "
@@ -763,8 +619,8 @@ def qlinear_reorder_optimizations(fx_graph):
     return fx_graph
 
 
-# Updated qkv_fusion pass to concat weights and biases and run on new linear ops
-def qkv_fusion_new(fx_graph):
+# qkv_fusion pass with zentorch linear ops
+def qkv_fusion(fx_graph):
     logger.info("Fusing QKV parallel linear operations.")
 
     qkv_fusion_len = 3
@@ -785,6 +641,7 @@ def qkv_fusion_new(fx_graph):
                     input_users.append(user)
             # Check if this input has exactly 3 users (Q, K, V)
             if len(input_users) != qkv_fusion_len:
+                logger.info("Fusion only supported for exactly 3 linear nodes currently, skipping fusion")
                 continue
             # Check that nodes are independent (no dependencies between them)
             nodes_are_dependent = (

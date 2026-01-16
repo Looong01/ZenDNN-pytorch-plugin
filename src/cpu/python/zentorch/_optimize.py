@@ -21,7 +21,7 @@ from ._op_replacements_new import replace_with_zentorch_ops_new
 from ._custom_op_replacement import (
     inplace_cat_fusion,
     emb_ops_horizontal_fusion,
-    qkv_fusion_new,
+    qkv_fusion,
     qlinear_reorder_optimizations,
 )
 from ._prepack_pass import add_zentorch_weight_prepack_ops
@@ -68,24 +68,9 @@ def optimize(fx_graph):
     # Quantization pattern replacement
     optimized_graph = replace_with_zentorch_qops(optimized_graph)
 
-    # QKV fusion with zentorch linear
-    qkv_fusion_new_enabled = (
-        os.environ.get(
-            "ZENTORCH_QKV_FUSION_NEW", os.environ.get("ZENTORCH_LINEAR", "0")
-        )
-        == "1"
-    )
-    linear_enabled = os.environ.get("ZENTORCH_LINEAR", "0") == "1"
-
-    if qkv_fusion_new_enabled and not linear_enabled:
-        logger.warning(
-            "ZENTORCH_QKV_FUSION_NEW is enabled but ZENTORCH_LINEAR is disabled. "
-            "New QKV fusion requires linear to be enabled."
-        )
-
-    if config.freezing and qkv_fusion_new_enabled and linear_enabled:
-        # Use updated qkv_fusion pass
-        optimized_graph = qkv_fusion_new(optimized_graph)
+    if config.freezing:
+        # qkv_fusion pass with zentorch linear ops
+        optimized_graph = qkv_fusion(optimized_graph)
 
     if (
         config.freezing
