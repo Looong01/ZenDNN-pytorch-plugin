@@ -47,7 +47,7 @@ def zentorch_weight_prepack_for_linear_replacement_without_bias(
         return zentorch.zentorch_linear_unary(
             mat_1,
             mat_2_prepacked,
-            is_weight_prepacked=is_weight_prepacked,
+            is_weight_prepacked=True,
             post_op=post_op,
             zentorch_op_name=zentorch_op_name,
         )
@@ -78,10 +78,10 @@ def zentorch_weight_prepack_for_linear_replacement_with_bias(
             mat_1,
             mat_2_prepacked,
             bias,
-            is_weight_prepacked=is_weight_prepacked,
+            is_weight_prepacked=True,
             post_op=post_op,
             zentorch_op_name=zentorch_op_name,
-        ).is_weight_prepacked(is_weight_prepacked)
+        )
 
     match.replace_by_example(repl, [mat_1, mat_2, bias, is_weight_prepacked, post_op, zentorch_op_name])
 
