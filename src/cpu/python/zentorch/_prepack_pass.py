@@ -13,6 +13,7 @@ from torch._inductor.pattern_matcher import (
     Arg,
     CallFunction,
     Match,
+    KeywordArg,
     PatternMatcherPass,
     register_graph_pattern,
     stable_topological_sort,
@@ -31,14 +32,14 @@ zentorch = torch.ops.zentorch
         zentorch.zentorch_linear_unary,
         Arg(),
         Arg(),
-        Arg(),
-        Arg(),
-        Arg(),
+        is_weight_prepacked=KeywordArg("is_weight_prepacked"),
+        post_op=KeywordArg("post_op"),
+        zentorch_op_name=KeywordArg("zentorch_op_name"),
     ),
     pass_dict=pass_pattern,
 )
 def zentorch_weight_prepack_for_linear_replacement_without_bias(
-    match: Match, mat_1: Any, mat_2: Any, is_weight_prepacked: Any, post_op: Any, zentorch_op_name: Any
+    match: Match, mat_1: Any, mat_2: Any, *, is_weight_prepacked: Any, post_op: Any, zentorch_op_name: Any
 ) -> None:
 
     def repl(mat_1: Any, mat_2: Any, is_weight_prepacked: Any, post_op: Any, zentorch_op_name: Any) -> torch.Tensor:
@@ -61,14 +62,14 @@ def zentorch_weight_prepack_for_linear_replacement_without_bias(
         Arg(),
         Arg(),
         Arg(),
-        Arg(),
-        Arg(),
-        Arg(),
+        is_weight_prepacked=KeywordArg("is_weight_prepacked"),
+        post_op=KeywordArg("post_op"),
+        zentorch_op_name=KeywordArg("zentorch_op_name"),
     ),
     pass_dict=pass_pattern,
 )
 def zentorch_weight_prepack_for_linear_replacement_with_bias(
-    match: Match, mat_1: Any, mat_2: Any, bias: Any, is_weight_prepacked: Any, post_op: Any, zentorch_op_name: Any
+    match: Match, mat_1: Any, mat_2: Any, bias: Any, *, is_weight_prepacked: Any, post_op: Any, zentorch_op_name: Any
 ) -> None:
 
     def repl(mat_1: Any, mat_2: Any, bias: Any, is_weight_prepacked: Any, post_op: Any, zentorch_op_name: Any) -> torch.Tensor:

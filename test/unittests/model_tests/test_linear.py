@@ -1,5 +1,5 @@
 # ******************************************************************************
-# Copyright (c) 2024-2025 Advanced Micro Devices, Inc.
+# Copyright (c) 2024-2026 Advanced Micro Devices, Inc.
 # All rights reserved.
 # ******************************************************************************
 
@@ -72,6 +72,8 @@ class Test_Linear_Model(AddmmTestCase):
             compiled_graph, (self.data.x), freeze_opt
         )
         self.assertEqual(counters["zentorch"]["zentorch_linear"], 3)
+        if freeze_opt:
+            self.assertEqual(counters["zentorch"]["zentorch_weight_prepack_for_linear"], 3)
         self.assertEqual(native_output, compiled_output)
 
 

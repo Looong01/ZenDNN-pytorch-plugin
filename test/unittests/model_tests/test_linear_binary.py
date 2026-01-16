@@ -1,5 +1,5 @@
 # ******************************************************************************
-# Copyright (c) 2024-2025 Advanced Micro Devices, Inc.
+# Copyright (c) 2024-2026 Advanced Micro Devices, Inc.
 # All rights reserved.
 # ******************************************************************************
 
@@ -103,6 +103,8 @@ class Test_Linear_Binary_Model(AddmmTestCase):
             freeze_flag,
         )
         self.assertEqual(counters["zentorch"][counter_key], 1)
+        if freeze_flag:
+            self.assertEqual(counters["zentorch"]["zentorch_weight_prepack_for_linear"], 1)
         tolerance = LINEAR_TOLERANCES.get(dtype, {"atol": 1e-3, "rtol": 1e-3})
         self.assertEqual(native_output, compiled_output, **tolerance)
 
