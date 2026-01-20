@@ -4,6 +4,7 @@
  ******************************************************************************/
 
 #include "EmbeddingUtils.hpp"
+#include "EnvReader.hpp"
 #include "Memory.hpp"
 #include "Ops.hpp"
 
@@ -83,6 +84,73 @@ void zendnnl_quant_embedding_bag_out(
 
   LOG(INFO) << "Output dimensions: " << num_bags << "x" << embedding_dim;
 
+  c10::MaybeOwned<at::Tensor> per_sample_weights_opt_maybe_owned =
+      at::borrow_from_optional_tensor(per_sample_weights_opt);
+  [[maybe_unused]] const at::Tensor &per_sample_weights =
+      *per_sample_weights_opt_maybe_owned;
+  const auto per_sample_weights_defined = per_sample_weights.defined();
+
+  const int int_env_value =
+      EnvReader::getEnvVariableAsInt("USE_ZENDNN_EMBBAG_DIRECT");
+  const bool use_zendnnl_direct_kernel = static_cast<bool>(int_env_value);
+  if (use_zendnnl_direct_kernel) {
+    // Build embag_params_t structure
+    zendnnl::lowoha::embag::embag_params_t params;
+
+    // Set data types
+    params.dtypes.table = data_type_t::u4;
+    params.dtypes.output = get_zendnnl_dtype(output);
+    params.dtypes.indices = get_zendnnl_dtype(indices);
+    params.dtypes.offsets = get_zendnnl_dtype(offsets);
+
+    // Use algo directly (embag_algo_t is aliased to ops::embag_algo_t)
+    switch (mode) {
+    case EMBEDDING_BAG_ALGO::SUM:
+      params.algo = embag_algo_t::sum;
+      break;
+    case EMBEDDING_BAG_ALGO::MEAN:
+      params.algo = embag_algo_t::mean;
+      break;
+    case EMBEDDING_BAG_ALGO::MAX:
+      params.algo = embag_algo_t::max;
+      break;
+    default:
+      // Assigning sum as the default algorithm as that is seen in
+      // native_functions.yaml file in Pytorch
+      // https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/native_functions.yaml
+      // func: embedding_bag(Tensor weight, Tensor indices, Tensor offsets, bool
+      // scale_grad_by_freq=False, int mode=0, bool sparse=False, Tensor?
+      // per_sample_weights=None, bool include_last_offset=False)
+      LOG(WARNING) << "Invalid embedding bag algorithm: " << mode
+                   << ". Using default algorithm: sum";
+      params.algo = embag_algo_t::sum;
+      break;
+    }
+
+    // Set dimensions
+    params.num_embeddings = weight.sizes()[0];
+    params.embedding_dim = embedding_dim;
+    params.num_indices = indices.sizes()[0];
+    params.num_bags =
+        include_last_offset ? offsets.sizes()[0] - 1 : offsets.sizes()[0];
+    params.is_weights = per_sample_weights_defined;
+    params.include_last_offset = include_last_offset;
+    params.padding_idx = padding_idx;
+    params.num_threads = 0; // Use default (omp_get_max_threads)
+    params.fp16_scale_bias = true;
+    params.dst_stride = output.strides()[0];
+
+    // Call LOWOHA embedding_bag_direct API
+    status_t status = zendnnl::lowoha::embag::embedding_bag_direct(
+        weight.data_ptr(), indices.data_ptr(), offsets.data_ptr(),
+        per_sample_weights_defined ? per_sample_weights.data_ptr<float>()
+                                   : nullptr,
+        output.data_ptr(), params);
+    ZENTORCH_CHECK(status == status_t::success,
+                   "LOA-operator for quant embedding bag failed.");
+    return;
+  }
+
   tensor_t table = tensor_t();
   set_zendnnl_tensor_attributes(weight.data_ptr(), data_type_t::u4, table,
                                 "table", false,
@@ -110,13 +178,7 @@ void zendnnl_quant_embedding_bag_out(
       output.data_ptr(), get_zendnnl_dtype(output), output_tensor, "output",
       false, output_sizes, output_strides, tensor_aligned_sizes, output_nbytes);
 
-  c10::MaybeOwned<at::Tensor> per_sample_weights_opt_maybe_owned =
-      at::borrow_from_optional_tensor(per_sample_weights_opt);
-  [[maybe_unused]] const at::Tensor &per_sample_weights =
-      *per_sample_weights_opt_maybe_owned;
   [[maybe_unused]] tensor_t per_sample_weights_tensor = tensor_t();
-
-  auto per_sample_weights_defined = per_sample_weights.defined();
   if (per_sample_weights_defined) {
     LOG(INFO) << "Using the per-sample weights tensor!";
     set_zendnnl_tensor_attributes(per_sample_weights, per_sample_weights_tensor,
