@@ -7,7 +7,6 @@ import unittest
 import torch
 from torch import nn
 import sys
-import os
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -42,18 +41,6 @@ class Custom_Model_Linear(nn.Module):
 
 @unittest.skipIf(not has_zentorch, "ZENTORCH is not installed")
 class Test_Linear_Model(AddmmTestCase):
-
-    def setUp(self):
-        super().setUp()
-        self._original_zentorch_linear = os.environ.get("ZENTORCH_LINEAR")
-        os.environ["ZENTORCH_LINEAR"] = "1"
-
-    def tearDown(self):
-        if self._original_zentorch_linear is None:
-            os.environ.pop("ZENTORCH_LINEAR", None)
-        else:
-            os.environ["ZENTORCH_LINEAR"] = self._original_zentorch_linear
-        super().tearDown()
 
     @AddmmTestCase.hypothesis_params_addmm_itr(
         dtype_list=supported_dtypes, freeze_list=freeze_opt

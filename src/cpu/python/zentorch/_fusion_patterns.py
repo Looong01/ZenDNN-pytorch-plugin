@@ -1,5 +1,5 @@
 # ******************************************************************************
-# Copyright (c) 2024-2025 Advanced Micro Devices, Inc.
+# Copyright (c) 2024-2026 Advanced Micro Devices, Inc.
 # All rights reserved.
 # ******************************************************************************
 
@@ -119,25 +119,6 @@ def _addmm_1dbias_add_pattern(arg_0, arg_1, add_1, bias_0, beta, alpha):
     return add_res
 
 
-def _addmm_1dbias_add_replacement(arg_0, arg_1, add_1, bias_0, beta, alpha):
-    counters["zentorch"]["pattern_matcher_addmm_1dbias_add"] += 1
-    shape_0 = arg_0.size()
-    shape_1 = arg_1.size()
-    shape_2 = add_1.size()
-
-    if add_1.dim() != 2:
-        view_0 = at_ops.view.default(add_1, [shape_0[0], shape_1[1]])
-        add_0 = zt_ops.zentorch_addmm_1dbias_add.default(
-            bias_0, arg_0, arg_1, view_0, beta=beta, alpha=alpha
-        )
-        out_0 = at_ops.view.default(add_0, shape_2)
-    else:
-        out_0 = zt_ops.zentorch_addmm_1dbias_add.default(
-            bias_0, arg_0, arg_1, add_1, beta=beta, alpha=alpha
-        )
-    return (out_0,)
-
-
 def _addmm_1dbias_view_add_add_pattern(arg_0, arg_1, add_1, add_2, bias_0, beta, alpha):
     # bias_0: bias
     # arg_0: mat1
@@ -152,28 +133,6 @@ def _addmm_1dbias_view_add_add_pattern(arg_0, arg_1, add_1, add_2, bias_0, beta,
         add_res = at_ops.add(addmm, add_1)
     add_res_2 = at_ops.add(add_res, add_2)
     return add_res_2
-
-
-def _addmm_1dbias_view_add_add_replacement(
-    arg_0, arg_1, add_1, add_2, bias_0, beta, alpha
-):
-    counters["zentorch"]["pattern_matcher_addmm_1dbias_add_add"] += 1
-    shape_0 = arg_0.size()
-    shape_1 = arg_1.size()
-    shape_2 = add_1.size()
-    # set of conditions is possible for this (for now, we have just 2)
-    if add_1.dim() != 2 and add_2.dim() != 2:
-        view_0 = at_ops.view.default(add_1, [shape_0[0], shape_1[1]])
-        view_1 = at_ops.view.default(add_2, [shape_0[0], shape_1[1]])
-        linear_add = zt_ops.zentorch_addmm_1dbias_add_add.default(
-            bias_0, arg_0, arg_1, view_0, view_1, beta=beta, alpha=alpha
-        )
-        out_0 = at_ops.view.default(linear_add, shape_2)
-    else:
-        out_0 = zt_ops.zentorch_addmm_1dbias_add_add.default(
-            bias_0, arg_0, arg_1, add_1, add_2, beta=beta, alpha=alpha
-        )
-    return out_0
 
 
 # Adding 4 Isometric patterns for linear+mul+add fusion
@@ -224,28 +183,6 @@ def _addmm_1dbias_view_mul_add_pattern_4(arg_0, arg_1, mul_1, add, bias_0, beta,
         mul_res = at_ops.mul(mul_1, addmm)
     add_res_2 = at_ops.add(add, mul_res)
     return add_res_2
-
-
-def _addmm_1dbias_view_mul_add_replacement(
-    arg_0, arg_1, mul_1, add, bias_0, beta, alpha
-):
-    counters["zentorch"]["pattern_matcher_addmm_1dbias_mul_add"] += 1
-    shape_0 = arg_0.size()
-    shape_1 = arg_1.size()
-    shape_2 = mul_1.size()
-    # set of conditions is possible for this (for now, we have just 2)
-    if mul_1.dim() != 2 and add.dim() != 2:
-        view_0 = at_ops.view.default(mul_1, [shape_0[0], shape_1[1]])
-        view_1 = at_ops.view.default(add, [shape_0[0], shape_1[1]])
-        linear_add = zt_ops.zentorch_addmm_1dbias_mul_add.default(
-            bias_0, arg_0, arg_1, view_0, view_1, beta=beta, alpha=alpha
-        )
-        out_0 = at_ops.view.default(linear_add, shape_2)
-    else:
-        out_0 = zt_ops.zentorch_addmm_1dbias_mul_add.default(
-            bias_0, arg_0, arg_1, mul_1, add, beta=beta, alpha=alpha
-        )
-    return out_0
 
 
 def _mm_add_pattern(arg_0, arg_1, add_1):
@@ -588,90 +525,6 @@ def _get_pattern_with_replacement():
             [arg_1(), arg_2(), arg_4(), arg_5()],
             kwargs_beta_alpha,
             _matmul_dtypes_check,
-        ),
-        (
-            _addmm_1dbias_add_pattern,
-            _addmm_1dbias_add_replacement,
-            [arg_1(), arg_2(), arg_3(), arg_5()],
-            kwargs_beta_alpha,
-            _matmul_dtypes_check,
-        ),
-        (
-            _addmm_1dbias_add_pattern,
-            _addmm_1dbias_add_replacement,
-            [arg_1(), arg_2(), arg_4(), arg_5()],
-            kwargs_beta_alpha,
-            _matmul_dtypes_check,
-        ),
-        (
-            _addmm_1dbias_view_add_add_pattern,
-            _addmm_1dbias_view_add_add_replacement,
-            [arg_1(), arg_2(), arg_3(), arg_3(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_add_add_pattern,
-            _addmm_1dbias_view_add_add_replacement,
-            [arg_1(), arg_2(), arg_4(), arg_4(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_1,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_3(), arg_3(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_1,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_4(), arg_4(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_2,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_3(), arg_3(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_2,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_4(), arg_4(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_3,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_3(), arg_3(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_3,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_4(), arg_4(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_4,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_3(), arg_3(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
-        ),
-        (
-            _addmm_1dbias_view_mul_add_pattern_4,
-            _addmm_1dbias_view_mul_add_replacement,
-            [arg_1(), arg_2(), arg_4(), arg_4(), arg_5()],
-            kwargs_beta_alpha,
-            _dim_check,
         ),
         (
             _mm_add_pattern,

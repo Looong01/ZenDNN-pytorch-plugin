@@ -56,9 +56,8 @@ def optimize(fx_graph):
     # for example, some models use decomposed gelu instead of the op directly.
     pattern_matched_model = preprocess_graph_pass(cleaned_graph)
 
-    if os.environ.get("ZENTORCH_LINEAR", "0") == "1":
-        # for linear replacement (and other new ones to be added, to be moved up or extended)
-        pattern_matched_model = replace_with_zentorch_ops_new(pattern_matched_model)
+    # for linear replacement (and other new ones to be added, to be moved up or extended)
+    pattern_matched_model = replace_with_zentorch_ops_new(pattern_matched_model)
 
     # Replacing ops with zentorch ops (to be moved down or replaced)
     optimized_graph = replace_with_zentorch_ops(pattern_matched_model)
@@ -74,7 +73,6 @@ def optimize(fx_graph):
 
     if (
         config.freezing
-        and os.environ.get("ZENTORCH_LINEAR", "0") == "1"
         and os.environ.get("ZENTORCH_WEIGHT_PREPACK", "1") == "1"
     ):
         # replace zendnn ops with zendnn custom passes

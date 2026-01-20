@@ -1,5 +1,5 @@
 # ******************************************************************************
-# Copyright (c) 2024-2025 Advanced Micro Devices, Inc.
+# Copyright (c) 2024-2026 Advanced Micro Devices, Inc.
 # All rights reserved.
 # ******************************************************************************
 
@@ -88,16 +88,12 @@ class Test_Addmm_Model(AddmmTestCase):
                     zentorch_graph = torch.compile(zentorch_model, backend="zentorch")
                     counters.clear()
                     self.assertEqual(counters["zentorch"]["zentorch_addmm"], 0)
-                    self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 0)
                     zentorch_graph_output = test_with_freeze_opt(
                         zentorch_graph,
                         (inp, self.data.x1[i], self.data.y1[j]),
                         freeze_opt
                     )
-                    if inp.ndim != 1:
-                        self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
-                    else:
-                        self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 1)
+                    self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
                     self.assertEqual(inductor_graph_output, zentorch_graph_output)
 
     @AddmmTestCase.hypothesis_params_addmm_itr(
@@ -113,16 +109,12 @@ class Test_Addmm_Model(AddmmTestCase):
             compiled_graph = torch.compile(model, backend="zentorch")
             counters.clear()
             self.assertEqual(counters["zentorch"]["zentorch_addmm"], 0)
-            self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 0)
             compiled_graph_output = test_with_freeze_opt(
                 compiled_graph,
                 (inp * 0, self.data.x1[0] * 0, self.data.y1[0] * 0),
                 freeze_opt
             )
-            if inp.ndim != 1:
-                self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
-            else:
-                self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 1)
+            self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
             self.assertEqual(model_output, compiled_graph_output)
 
     @AddmmTestCase.hypothesis_params_addmm_itr(
@@ -138,16 +130,12 @@ class Test_Addmm_Model(AddmmTestCase):
             compiled_graph = torch.compile(model, backend="zentorch")
             counters.clear()
             self.assertEqual(counters["zentorch"]["zentorch_addmm"], 0)
-            self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 0)
             compiled_graph_output = test_with_freeze_opt(
                 compiled_graph,
                 (inp / 0, self.data.x1[0] / 0, self.data.y1[0] / 0),
                 freeze_opt
             )
-            if inp.ndim != 1:
-                self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
-            else:
-                self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 1)
+            self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
             self.assertEqual(model_output, compiled_graph_output)
 
     @AddmmTestCase.hypothesis_params_addmm_itr(
@@ -170,7 +158,6 @@ class Test_Addmm_Model(AddmmTestCase):
             zentorch_graph = torch.compile(zentorch_model, backend="zentorch")
             counters.clear()
             self.assertEqual(counters["zentorch"]["zentorch_addmm"], 0)
-            self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 0)
             zentorch_graph_output = test_with_freeze_opt(
                 zentorch_graph,
                 (
@@ -180,10 +167,7 @@ class Test_Addmm_Model(AddmmTestCase):
                 ),
                 freeze_opt
             )
-            if inp.ndim != 1:
-                self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
-            else:
-                self.assertEqual(counters["zentorch"]["zentorch_addmm_1dbias"], 1)
+            self.assertEqual(counters["zentorch"]["zentorch_addmm"], 1)
             self.assertEqual(inductor_graph_output, zentorch_graph_output)
 
     @AddmmTestCase.hypothesis_params_addmm_itr(

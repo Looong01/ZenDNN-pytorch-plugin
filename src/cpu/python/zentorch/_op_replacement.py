@@ -146,34 +146,6 @@ def is_bias_1d_tensor(match):
         alpha=KeywordArg("alpha"),
     ),
     pass_dict=pass_pattern,
-    extra_check=is_bias_1d_tensor,
-)
-def addmm_1dbias_replacement(match, inp, mat_1, mat_2, *, beta, alpha):
-    def repl(inp, mat_1, mat_2, beta, alpha):
-        counters["zentorch"]["zentorch_addmm_1dbias"] += 1
-        return zt_ops.zentorch_addmm_1dbias(inp, mat_1, mat_2, beta=beta, alpha=alpha)
-
-    match.replace_by_example(repl, [inp, mat_1, mat_2, beta, alpha])
-
-
-# addmm replacement
-def is_bias_not_1d_tensor(match):
-    # checks if self/bias tensor is 1-d or not
-    # returns true if 1d bias tensor
-    return not is_bias_1d_tensor(match)
-
-
-@register_graph_pattern(
-    CallFunction(
-        at_ops.addmm,
-        Arg(),
-        Arg(),
-        Arg(),
-        beta=KeywordArg("beta"),
-        alpha=KeywordArg("alpha"),
-    ),
-    pass_dict=pass_pattern,
-    extra_check=is_bias_not_1d_tensor,
 )
 def addmm_replacement(match, inp, mat_1, mat_2, *, beta, alpha):
     def repl(inp, mat_1, mat_2, beta, alpha):

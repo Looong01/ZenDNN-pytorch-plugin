@@ -1,5 +1,5 @@
 # ******************************************************************************
-# Copyright (c) 2024-2025 Advanced Micro Devices, Inc.
+# Copyright (c) 2024-2026 Advanced Micro Devices, Inc.
 # All rights reserved.
 # ******************************************************************************
 
@@ -315,14 +315,14 @@ class Test_Pattern_Matcher_Model(Zentorch_TestCase):
         with self.subTest(dtype="float32"):
             self.skip_if_bfloat16_path_issue(dtype)
             self.skip_if_bfloat16_unsupported_hardware()
-            self.assertEqual(counters["zentorch"]["pattern_matcher_split_mm"], 0)
+            self.assertEqual(counters["zentorch"]["zentorch_linear"], 0)
             with torch.autocast("cpu"):
                 _ = test_with_freeze_opt(compiled_model, (inp), freeze_opt)
-                self.assertEqual(counters["zentorch"]["pattern_matcher_split_mm"], 1)
+                self.assertEqual(counters["zentorch"]["zentorch_linear"], 1)
                 counters.clear()
-        self.assertEqual(counters["zentorch"]["pattern_matcher_split_mm"], 0)
+        self.assertEqual(counters["zentorch"]["zentorch_linear"], 0)
         compiled_model_op = test_with_freeze_opt(compiled_model, (inp), freeze_opt)
-        self.assertEqual(counters["zentorch"]["pattern_matcher_split_mm"], 1)
+        self.assertEqual(counters["zentorch"]["zentorch_linear"], 1)
         self.assertEqual(model_op, compiled_model_op)
 
 
