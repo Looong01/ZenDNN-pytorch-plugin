@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2023-2025 Advanced Micro Devices, Inc.
+ * Copyright (c) 2023-2026 Advanced Micro Devices, Inc.
  * All rights reserved.
  ******************************************************************************/
 
@@ -420,21 +420,10 @@ at::Tensor zentorch_bmm(const at::Tensor &self, const at::Tensor &mat2,
   ZENTORCH_CHECK((self.dim() == 3 && mat2.dim() == 3), // aten::bmm
                  "unsupported dims for self and mat2");
 
-  // TODO
-  // Some scenarios necessitate the creation of tensors in a strided fashion on
-  // the python side of the plugin. These types of tensors are currently not
-  // added in the ZenDNN(L). So, before calling the kernel from the ZenDNN(L)
-  // library, we are converting the strided tensors into contiguous tensors
-  // using the "get_contiguous_view" utility function. As soon as the library
-  // supports these strided tensors, the usage of this utility function will
-  // be removed.
-  const at::Tensor &self_ = get_contiguous_view(self);
-  const at::Tensor &mat2_ = get_contiguous_view(mat2);
-
   at::Tensor result = create_linear_and_matmul_output_tensor(self, mat2);
 
   const at::Tensor empty_bias;
-  return zentorch_matmul_impl(self_, mat2_, empty_bias, result,
+  return zentorch_matmul_impl(self, mat2, empty_bias, result,
                               {} /*post_op_ids*/, {} /*post_op_buffers*/,
                               0.0f /* beta */, 1.0f /* alpha */,
                               zentorch_op_name, false /* is_weight_const */);
@@ -509,7 +498,8 @@ TORCH_LIBRARY(zentorch, m) {
   m.def("zentorch_mm_tanh(Tensor self, Tensor mat2, *, str "
         "zentorch_op_name='zentorch::zentorch_mm_tanh') -> Tensor");
   m.def("zentorch_bmm(Tensor self, Tensor mat2, str "
-        "zentorch_op_name='zentorch::zentorch_bmm') -> Tensor");
+        "zentorch_op_name='zentorch::zentorch_bmm') -> Tensor",
+        {at::Tag::needs_fixed_stride_order});
   m.def(
       "zentorch_addmm(Tensor self, Tensor mat1, Tensor mat2, *, Scalar beta=1, "
       "Scalar alpha=1, str zentorch_op_name='zentorch::zentorch_addmm') "

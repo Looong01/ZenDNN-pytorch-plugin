@@ -32,16 +32,14 @@ static const std::unordered_map<int64_t, post_op_type_t> post_op_type_map = {
 inline at::Tensor get_contiguous_view(const at::Tensor &tensor) {
   auto stride = tensor.strides();
   auto sizes = tensor.sizes();
-  bool is_sorted =
-      std::is_sorted(stride.begin(), stride.end(), std::greater<int64_t>());
   bool is_zero =
       std::any_of(stride.begin(), stride.end(), [](auto s) { return s == 0; });
-  if (!is_sorted || is_zero) {
-    auto new_tensor = tensor.clone(at::MemoryFormat::Contiguous).view(sizes);
+  if (!tensor.is_contiguous() || is_zero) {
+    auto new_tensor = tensor.contiguous();
     LOG(INFO) << "Tensor is not contiguous. Converting the tensor to a "
                  "contiguous format in "
               << __FILE__ << ": " << __LINE__ << " in " << __FUNCTION__;
-    return new_tensor;
+    return new_tensor.view(sizes);
   }
   return tensor.view(sizes);
 }
