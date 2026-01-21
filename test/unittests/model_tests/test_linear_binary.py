@@ -64,7 +64,7 @@ class LinearBinaryModel(nn.Module):
 class Test_Linear_Binary_Model(AddmmTestCase):
 
     def _run_binary_post_op(
-        self, key: str, bias_flag: bool, dtype: str, freeze_flag: bool
+        self, key: str, bias_flag: bool, dtype: str, freeze_flag: bool, transposed_binary: bool = False
     ) -> None:
         if dtype == "bfloat16":
             self.skip_if_bfloat16_unsupported_hardware()
@@ -77,7 +77,10 @@ class Test_Linear_Binary_Model(AddmmTestCase):
             bias=bias_flag,
         )
         reference_linear = model.linear(self.data.input)
-        binary_tensor = torch.randn_like(reference_linear)
+        if transposed_binary:
+            binary_tensor = torch.randn(reference_linear.shape[::-1], dtype=torch_dtype).t()
+        else:
+            binary_tensor = torch.randn_like(reference_linear)
         native_output = LINEAR_BINARY_OPS[key]["op"](reference_linear, binary_tensor)
         reset_dynamo()
         compiled_graph = torch.compile(model, backend="zentorch")
@@ -89,7 +92,11 @@ class Test_Linear_Binary_Model(AddmmTestCase):
             (self.data.input, binary_tensor),
             freeze_flag,
         )
-        self.assertEqual(counters["zentorch"][counter_key], 1)
+        if transposed_binary:
+            # We don't expect fusion for transposed binary
+            self.assertEqual(counters["zentorch"][counter_key], 0)
+        else:
+            self.assertEqual(counters["zentorch"][counter_key], 1)
         if freeze_flag:
             self.assertEqual(counters["zentorch"]["zentorch_weight_prepack_for_linear"], 1)
         tolerance = LINEAR_TOLERANCES.get(dtype, {"atol": 1e-3, "rtol": 1e-3})
@@ -108,6 +115,13 @@ class Test_Linear_Binary_Model(AddmmTestCase):
         for bias_name, bias_flag in LINEAR_BIAS_CASES.items():
             with self.subTest(bias=bias_name):
                 self._run_binary_post_op("mul", bias_flag, dtype, freeze_opt)
+
+    @AddmmTestCase.hypothesis_params_addmm_itr(dtype_list=supported_dtypes, freeze_list=freeze_opt)
+    @torch.inference_mode()
+    def test_linear_add_model_with_transposed_binary(self, dtype, freeze_opt):
+        for bias_name, bias_flag in LINEAR_BIAS_CASES.items():
+            with self.subTest(bias=bias_name):
+                self._run_binary_post_op("add", bias_flag, dtype, freeze_opt, transposed_binary=True)
 
 
 if __name__ == "__main__":

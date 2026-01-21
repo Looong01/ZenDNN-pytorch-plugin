@@ -122,13 +122,15 @@ TORCH_LIBRARY_FRAGMENT(zentorch, m) {
         "binary_input, Tensor? bias=None, *, bool is_weight_prepacked=False, "
         "str post_op_1='none', str post_op_2='none', str "
         "zentorch_op_name='zentorch::zentorch_linear_unary_binary') "
-        "-> Tensor");
+        "-> Tensor",
+        {at::Tag::needs_fixed_stride_order});
   m.def("zentorch_linear_binary_binary(Tensor input, Tensor weight, Tensor "
         "binary_input_1, Tensor binary_input_2, Tensor? bias=None, *, bool "
         "is_weight_prepacked=False, str post_op_1='none', str "
         "post_op_2='none', str "
         "zentorch_op_name='zentorch::zentorch_linear_binary_binary') "
-        "-> Tensor");
+        "-> Tensor",
+        {at::Tag::needs_fixed_stride_order});
 }
 
 TORCH_LIBRARY_IMPL(zentorch, CPU, m) {
