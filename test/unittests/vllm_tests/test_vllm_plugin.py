@@ -7,13 +7,13 @@
 Unit tests for zentorch.vllm plugin.
 
 Tests verify:
-- Version compatibility checks for supported versions (0.11.x, 0.12.x, 0.13.x)
+- Version compatibility checks for supported versions (0.11.x, 0.12.0, 0.13.0, 0.14.0)
 - Version parsing logic
 - Patch registration and application
 - Individual patch functionality (oneDNN disable, CompilationConfig repr, etc.)
 - Platform configuration
 
-Supported vLLM versions: 0.11.0, 0.11.1, 0.11.2, 0.12.0, 0.13.0
+Supported vLLM versions: 0.11.0, 0.11.1, 0.11.2, 0.12.0, 0.13.0, 0.14.0
 """
 
 import sys
@@ -48,12 +48,13 @@ class TestVersionParsing(unittest.TestCase):
         self.assertEqual(_base_version("0.12.0.dev1+gb8b302cde.d20251203.cpu"), "0.12.0")
         self.assertEqual(_base_version("0.13.0rc1+cpu"), "0.13.0")
         self.assertEqual(_base_version("0.13.0rc0"), "0.13.0")
+        self.assertEqual(_base_version("0.14.0rc1+cpu"), "0.14.0")
 
     def test_version_map_contains_supported_versions(self):
         """VERSION_MAP should contain all supported base versions."""
         from zentorch.vllm.core import _VERSION_MAP
 
-        expected_versions = ["0.11.0", "0.11.1", "0.11.2", "0.12.0", "0.13.0"]
+        expected_versions = ["0.11.0", "0.11.1", "0.11.2", "0.12.0", "0.13.0", "0.14.0"]
         for ver in expected_versions:
             self.assertIn(ver, _VERSION_MAP, f"{ver} should be in VERSION_MAP")
 
@@ -79,11 +80,15 @@ class TestVersionParsing(unittest.TestCase):
         self.assertEqual(_VERSION_MAP.get(_base_version("0.13.0")), "v13")
         self.assertEqual(_VERSION_MAP.get(_base_version("0.13.0rc1+cpu")), "v13")
 
+        # v14 family
+        self.assertEqual(_VERSION_MAP.get(_base_version("0.14.0")), "v14")
+        self.assertEqual(_VERSION_MAP.get(_base_version("0.14.0rc1+cpu")), "v14")
+
     def test_version_family_detection_unsupported(self):
         """VERSION_MAP should return None for unsupported versions."""
         from zentorch.vllm.core import _base_version, _VERSION_MAP
 
-        unsupported = ["0.9.1", "0.10.0", "0.10.5", "0.14.0", "1.0.0"]
+        unsupported = ["0.9.1", "0.10.0", "0.10.5", "0.15.0", "1.0.0"]
         for ver in unsupported:
             self.assertIsNone(
                 _VERSION_MAP.get(_base_version(ver)),
@@ -167,7 +172,7 @@ class TestPatchRegistration(unittest.TestCase):
         register()
         family = get_version_family()
 
-        # These patches apply to all versions (0.11-0.13)
+        # These patches apply to all versions (0.11.x, 0.12.0, 0.13.0, 0.14.0)
         universal_patches = ["CompilationConfigRepr", "OneDNNDisable"]
         for patch_name in universal_patches:
             self.assertIn(

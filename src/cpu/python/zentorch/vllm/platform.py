@@ -7,12 +7,12 @@
 
 Supports:
 - 0.11.x: CompilationLevel, _Backend, PagedAttention patching
-- 0.12.x/0.13.x: CompilationMode, AttentionBackendEnum, native CPU attention
+- 0.12.0/0.13.0/0.14.0: CompilationMode, AttentionBackendEnum, native CPU attention
 """
 
 from typing import TYPE_CHECKING
 
-from zentorch.vllm.core import is_v11, is_v13
+from zentorch.vllm.core import is_v11, is_v13, is_v14
 
 if TYPE_CHECKING:
     from vllm.config import VllmConfig
@@ -79,11 +79,11 @@ def _create_platform():
 
             0.11: (selected_backend, head_size, dtype, ..., use_v1=True)
             0.12: (selected_backend, head_size, dtype, ..., attn_type=None)
-            0.13: (selected_backend, attn_selector_config)
+            0.13/0.14: (selected_backend, attn_selector_config)
             """
             if is_v11():
                 return cls._attn_backend_v11(selected_backend, *args, **kwargs)
-            # 0.12/0.13: delegate to parent CpuPlatform
+            # 0.12/0.13/0.14: delegate to parent CpuPlatform
             return super(ZenCPUPlatformImpl, cls).get_attn_backend_cls(
                 selected_backend, *args, **kwargs
             )
@@ -123,12 +123,12 @@ def _create_platform():
 
             0.11: Patches Worker.__init__ and Worker.profile for CPU-only profiling
             0.12: Patched in __init__.py register() (must run before worker creation)
-            0.13: Suppresses redundant cuda-time table output for CPU (single table like 0.14)
+            0.13/0.14: Suppresses redundant cuda-time table output for CPU (single table like 0.14)
             """
             if is_v11():
                 cls._patch_profiler_v11()
-            elif is_v13():
-                cls._patch_profiler_v13()
+            elif is_v13() or is_v14():
+                cls._patch_profiler_v13_v14()
             # 0.12 is handled via _apply_profiler_patch_v12() in __init__.py register()
 
         @classmethod
@@ -181,8 +181,8 @@ def _create_platform():
             logger.info("[zentorch] Patched Worker profiler for CPU-only (0.11)")
 
         @classmethod
-        def _patch_profiler_v13(cls):
-            """Fix vLLM 0.13: Suppress redundant cuda-time table for CPU-only."""
+        def _patch_profiler_v13_v14(cls):
+            """Fix vLLM 0.13/0.14: Suppress redundant cuda-time table for CPU-only."""
             try:
                 from vllm.profiler import wrapper as wrapper_module
             except ImportError:

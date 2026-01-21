@@ -89,7 +89,7 @@ class IPEXFlashAttentionPatch:
 # ---------------------------------------------------------------------------
 
 
-@vllm_version_range(min_ver="0.11.0", max_ver="0.13.99")
+@vllm_version_range(min_ver="0.11.0", max_ver="0.14.0")
 class CompilationConfigReprPatch:
     """Fix CompilationConfig repr for pydantic serialization."""
 
@@ -147,7 +147,7 @@ class CompilationConfigReprPatch:
             return False
 
 
-@vllm_version_range(min_ver="0.11.0", max_ver="0.13.99")
+@vllm_version_range(min_ver="0.11.0", max_ver="0.14.0")
 class OneDNNDisablePatch:
     """Disable oneDNN GEMM to use zentorch.zentorch_linear_unary()."""
 
@@ -263,7 +263,7 @@ class CPUProfilerPatchV12:
         return True
 
 
-@vllm_version("0.13.0")
+@vllm_version("0.13.0", "0.14.0")
 class CPUProfilerPatchV13:
     """Stub: Actual patching happens in platform.py check_and_update_config."""
 
@@ -433,7 +433,7 @@ def register() -> Optional[str]:
 
     if family is None:
         logger.warning(
-            "[zentorch] Unsupported vLLM %s. Supports: 0.11.x, 0.12.x, 0.13.x",
+            "[zentorch] Unsupported vLLM %s. Supports: 0.11.x, 0.12.0, 0.13.0, 0.14.0",
             vllm_ver,
         )
         return None

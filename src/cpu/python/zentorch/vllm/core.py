@@ -27,6 +27,7 @@ _VERSION_MAP = {
     "0.11.2": "v11_2",
     "0.12.0": "v12",
     "0.13.0": "v13",
+    "0.14.0": "v14",
 }
 
 
@@ -48,7 +49,7 @@ def _base_version(ver: str) -> str:
 
 
 def get_version_family() -> Optional[str]:
-    """Return 'v11', 'v11_1', 'v11_2', 'v12', 'v13' or None."""
+    """Return 'v11', 'v11_1', 'v11_2', 'v12', 'v13', 'v14' or None."""
     ver = get_vllm_version()
     if ver is None:
         return None
@@ -73,6 +74,10 @@ def is_v12() -> bool:
 
 def is_v13() -> bool:
     return get_version_family() == "v13"
+
+
+def is_v14() -> bool:
+    return get_version_family() == "v14"
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +123,7 @@ def vllm_version_range(
     """Decorator: apply patch for a version range.
 
     Usage:
-        @vllm_version_range(min_ver="0.11.0", max_ver="0.13.99")
+        @vllm_version_range(min_ver="0.11.0", max_ver="0.14.0")
         class MyPatch:
             pass
     """
