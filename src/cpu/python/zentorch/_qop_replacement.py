@@ -4,7 +4,6 @@
 # ******************************************************************************
 
 import functools
-import sys
 import torch
 from torch._inductor import config
 from torch._inductor.pattern_matcher import (
@@ -56,8 +55,8 @@ def _qint8_dq_addmm_bias_per_tensor_replacement_impl(
 
 
 @register_graph_pattern(
-    CallFunction(  # Root: zentorch_addmm_1dbias
-        torch.ops.zentorch.zentorch_addmm_1dbias.default,
+    CallFunction(  # Root: zentorch_addmm
+        torch.ops.zentorch.zentorch_addmm.default,
         Arg(),  # bias
         CallFunction(  # Input dequantize
             torch.ops.quantized_decomposed.dequantize_per_tensor.tensor,
@@ -152,8 +151,8 @@ def _qint8_dq_addmm_bias_per_channel_replacement_impl(
 
 
 @register_graph_pattern(
-    CallFunction(  # Root: zentorch_addmm_1dbias
-        torch.ops.zentorch.zentorch_addmm_1dbias.default,
+    CallFunction(  # Root: zentorch_addmm
+        torch.ops.zentorch.zentorch_addmm.default,
         Arg(),  # bias
         CallFunction(  # Input 'x' to addmm
             torch.ops.quantized_decomposed.dequantize_per_tensor.tensor,
@@ -311,8 +310,8 @@ def _qint8_dq_addmm_1dbias_per_tensor_channel_replacement_impl(
 
 
 @register_graph_pattern(
-    CallFunction(  # Root: zentorch_addmm_1dbias
-        torch.ops.zentorch.zentorch_addmm_1dbias.default,
+    CallFunction(  # Root: zentorch_addmm
+        torch.ops.zentorch.zentorch_addmm.default,
         Arg(),  # primals_3
         CallFunction(  # Input 'x' to addmm
             torch.ops.quantized_decomposed.dequantize_per_tensor.default,
@@ -417,8 +416,8 @@ def _qint8_dq_addmm_1dbias_view_per_tensor_channel_replacement_impl(
 @register_graph_pattern(
     CallFunction(  # Root: aten.view output
         torch.ops.aten.view.default,
-        CallFunction(  # zentorch_addmm_1dbias
-            torch.ops.zentorch.zentorch_addmm_1dbias.default,
+        CallFunction(  # zentorch_addmm
+            torch.ops.zentorch.zentorch_addmm.default,
             Arg(),  # primals_3
             CallFunction(  # Input 'x' to aten.view
                 torch.ops.aten.view.default,
@@ -706,113 +705,6 @@ def qint8_dq_addmm_view_per_tensor_channel_replacement_decorated(
 
 def replace_with_zentorch_qops(graph):
     if config.pattern_matcher:
-        # Quark Quantizer patterns
-        # Pattern needs to be registered here to address being missed if Quark
-        # is imported after Zentorch.
-
-        if "quark" in sys.modules:
-            from quark.torch.quantization.tensor_quantize import (  # noqa: F401
-                ScaledFakeQuantize,
-            )
-
-            def _quark_scaled_fake_quantize_uint8_replacement_impl(
-                bias,  # bias_arg
-                input_tensor,  # input_tensor_arg
-                input_scale,  # input_scale_arg
-                input_zero_point,  # input_zp_arg
-                weight_tensor,  # weight_tensor_arg
-                weight_scale,  # weight_scale_arg
-                weight_zero_point,  # weight_zp_arg
-            ):
-                quantized_weight_tensor = (
-                    torch.ops.quantized_decomposed.quantize_per_channel.default(
-                        weight_tensor,
-                        weight_scale,
-                        weight_zero_point,
-                        0,
-                        -128,
-                        127,
-                        torch.int8,
-                    )
-                )
-                output = torch.ops.zentorch.zentorch_qlinear.default(
-                    input_tensor,
-                    quantized_weight_tensor,  # Use the newly quantized weight
-                    bias,
-                    input_scale,
-                    input_zero_point,
-                    weight_scales=weight_scale,
-                    weight_zero_points=weight_zero_point,
-                    output_dtype=input_tensor.dtype,
-                    output_scales=None,
-                    output_zero_points=None,
-                )
-                return (output,)
-
-            @register_graph_pattern(
-                CallFunction(
-                    torch.ops.zentorch.zentorch_addmm_1dbias.default,
-                    Arg(),
-                    CallFunction(
-                        torch.ops.quark.scaled_fake_quantize.default,
-                        "uint8",
-                        Arg(),
-                        Arg(),
-                        Arg(),
-                        1,
-                        1,
-                        0.0,
-                        255.0,
-                        8,
-                        "per_tensor",
-                        "None",
-                    ),
-                    CallFunction(
-                        torch.ops.aten.permute.default,
-                        CallFunction(
-                            torch.ops.quark.scaled_fake_quantize.default,
-                            "int8",
-                            Arg(),
-                            Arg(),
-                            Arg(),
-                            0,
-                            1,
-                            -128.0,
-                            127.0,
-                            8,
-                            "per_channel",
-                            "None",
-                        ),
-                        [1, 0],
-                    ),
-                ),
-                pass_dict=matcher_pass,
-            )
-            def quark_scaled_fake_quantize_uint8_replacement_decorated(
-                match: Match,
-                bias_arg,
-                input_tensor_arg,
-                input_scale_arg,
-                input_zp_arg,
-                weight_tensor_arg,
-                weight_scale_arg,
-                weight_zp_arg,
-            ):
-                match.replace_by_example(
-                    _quark_scaled_fake_quantize_uint8_replacement_impl,
-                    [
-                        bias_arg,
-                        input_tensor_arg,
-                        input_scale_arg,
-                        input_zp_arg,
-                        weight_tensor_arg,
-                        weight_scale_arg,
-                        weight_zp_arg,
-                    ],
-                )
-
-        # Quark Quantizer patterns end #
-
         GraphTransformObserver = functools.partial(
             torch.fx.passes.graph_transform_observer.GraphTransformObserver,
             subsystem="replace_with_zentorch_qops",
