@@ -39,11 +39,12 @@ private:
   EnvReader() {}
 
   void initializeVariables() {
-    storeEnvVariable("USE_ZENDNN_MATMUL_DIRECT", 1);
-
     // TODO:
     // Add test cases to check this flow explicitly.
-    storeEnvVariable("USE_ZENDNN_EMBBAG_DIRECT", 1);
+    storeEnvVariable("USE_ZENDNN_MATMUL_DIRECT",
+                     1); // LOA is default for Matmul
+    storeEnvVariable("USE_ZENDNN_EMBBAG_DIRECT",
+                     1); // LOA is default for EmbeddingBag
   }
 
   // Function to convert and store environment variable value as integer
