@@ -19,19 +19,41 @@ at::Tensor quantize_bf16_to_int8(const at::Tensor &input,
       input.options().dtype(
           input_zero_points_defined ? c10::kByte : c10::kChar)); // For u8 & s8
 
-  zendnnl::lowoha::reorder::lowoha_reorder_params_t params;
-  params.dtypes.src = data_type_t::bf16;
-  params.dtypes.dst =
+  zendnnl::lowoha::reorder::reorder_params_t params;
+  params.src_dtype = data_type_t::bf16;
+  params.dst_dtype =
       input_zero_points_defined ? data_type_t::u8 : data_type_t::s8;
+
+  auto to_long_vector =
+      [](const c10::IntArrayRef &arr) -> std::vector<long int> {
+    return std::vector<long int>(arr.begin(), arr.end());
+  };
+
+  params.src_shape = to_long_vector(input.sizes());
+  params.dst_shape = to_long_vector(q_input.sizes());
+
+  params.src_strides = to_long_vector(input.strides());
+  params.dst_strides = to_long_vector(q_input.strides());
 
   params.quant_params.scale.buff = input_scales.data_ptr();
   params.quant_params.scale.dt = data_type_t::f32;
 
+  // Per-tensor quantization: all dims are 1
+  const auto _dims = std::vector<int64_t>(input.dim(), 1);
+
+  // This is purely for per-tensor quantization.
+  // Will update this once we support per-channel quantization.
+  params.quant_params.scale.dims = _dims;
+
   params.quant_params.zero_point.buff = input_zero_points.data_ptr();
   params.quant_params.zero_point.dt = data_type_t::s32;
 
+  // This is purely for per-tensor quantization.
+  // Will update this once we support per-channel quantization.
+  params.quant_params.zero_point.dims = _dims;
+
   status_t reorder_operator_status = zendnnl::lowoha::reorder::reorder_direct(
-      input.data_ptr(), q_input.data_ptr(), input.numel(), params);
+      input.data_ptr(), q_input.data_ptr(), params);
   ZENTORCH_CHECK(reorder_operator_status == status_t::success,
                  "bf16 to int8 quantization reorder failed for input tensor "
                  "with shape [",
