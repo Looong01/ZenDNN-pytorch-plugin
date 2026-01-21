@@ -16,7 +16,12 @@ Tests verify:
 Supported vLLM versions: 0.11.0, 0.11.1, 0.11.2, 0.12.0, 0.13.0
 """
 
+import sys
 import unittest
+
+# vLLM 0.11+ uses Python 3.10+ type syntax (e.g., `X | None`)
+# which fails at import time on Python 3.9
+IS_PYTHON_3_10_OR_ABOVE = sys.version_info >= (3, 10)
 
 try:
     import vllm  # NoQA: F401
@@ -95,6 +100,7 @@ class TestVllmPluginVersionCheck(unittest.TestCase):
     """Test version compatibility with installed vLLM."""
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_register_returns_platform_for_installed_vllm(self):
         """register() should return platform path for the installed vLLM version."""
         from zentorch.vllm import register
@@ -108,6 +114,7 @@ class TestVllmPluginVersionCheck(unittest.TestCase):
         self.assertEqual(result, "zentorch.vllm.platform.ZenCPUPlatform")
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_installed_vllm_version_is_supported(self):
         """Installed vLLM version should be in supported list."""
         from zentorch.vllm.core import get_version_family, _base_version
@@ -125,6 +132,7 @@ class TestPatchRegistration(unittest.TestCase):
     """Test that patches are registered and applied correctly."""
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_patches_are_registered(self):
         """All expected patches should be registered with manager."""
         from zentorch.vllm import register
@@ -150,6 +158,7 @@ class TestPatchRegistration(unittest.TestCase):
             )
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_version_appropriate_patches_applied(self):
         """Patches appropriate for installed vLLM version should be applied."""
         from zentorch.vllm import register
@@ -177,6 +186,7 @@ class TestOneDNNDisablePatch(unittest.TestCase):
     """Test oneDNN GEMM disable patch."""
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_onednn_gemm_disabled_after_register(self):
         """_supports_onednn should be False after register() is called."""
         from zentorch.vllm import register
@@ -195,6 +205,7 @@ class TestCompilationConfigPatch(unittest.TestCase):
     """Test CompilationConfig repr patch."""
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_compilation_config_repr_is_patched(self):
         """CompilationConfig.__repr__ should have _zentorch_patched attribute."""
         from zentorch.vllm import register
@@ -209,6 +220,7 @@ class TestCompilationConfigPatch(unittest.TestCase):
         )
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_compilation_config_repr_handles_custom_pass(self):
         """Patched repr should not raise errors with zentorch optimize_pass."""
         from zentorch.vllm import register
@@ -237,6 +249,7 @@ class TestPlatformConfiguration(unittest.TestCase):
     """Test ZenCPUPlatform configuration."""
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_platform_device_name_is_cpu(self):
         """device_name should be 'cpu'."""
         from zentorch.vllm.platform import ZenCPUPlatform
@@ -244,6 +257,7 @@ class TestPlatformConfiguration(unittest.TestCase):
         self.assertEqual(ZenCPUPlatform.device_name, "cpu")
 
     @unittest.skipUnless(VLLM_AVAILABLE, "vLLM not installed")
+    @unittest.skipUnless(IS_PYTHON_3_10_OR_ABOVE, "vLLM 0.11+ requires Python 3.10+")
     def test_platform_device_type_is_cpu(self):
         """device_type should be 'cpu'."""
         from zentorch.vllm.platform import ZenCPUPlatform
