@@ -1,5 +1,5 @@
 # ******************************************************************************
-# Copyright (c) 2023-2025 Advanced Micro Devices, Inc.
+# Copyright (c) 2023-2026 Advanced Micro Devices, Inc.
 # All rights reserved.
 # ******************************************************************************
 
@@ -71,6 +71,7 @@ if __name__ == "__main__":
         "2.8.0": "torchvision==0.23.0",
         "2.9.0": "torchvision==0.24.0",
         "2.9.1": "torchvision==0.24.1",
+        "2.10.0": "torchvision==0.25.0",
     }
     if importutil.find_spec("torchvision") is not None:
         print("Warning: Torchvision already installed, skipping installing it")
@@ -82,6 +83,6 @@ if __name__ == "__main__":
         print(
             "Couldnot find the valid torchvision version which is \
 compatibility with installed torch version. Supported Torch versions \
-are 2.6.*/2.7.*/2.8.*/2.9.*"
+are 2.6.*/2.7.*/2.8.*/2.9.*/2.10.*"
         )
         exit(1)
