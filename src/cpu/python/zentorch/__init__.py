@@ -1,5 +1,5 @@
 # ******************************************************************************
-# Copyright (c) 2023-2025 Advanced Micro Devices, Inc.
+# Copyright (c) 2023-2026 Advanced Micro Devices, Inc.
 # All rights reserved.
 # ******************************************************************************
 
@@ -24,7 +24,5 @@ from ._info import __config__, __version__  # noqa
 from ._compile_backend import *  # noqa
 from ._meta_registrations import *  # noqa
 from ._freeze_utils import freezing_enabled  # noqa
-
-# llm optimizations
-from . import llm  # noqa
 from . import utils  # noqa F401
+from . import llm  # noqa F401

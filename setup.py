@@ -6,7 +6,7 @@
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CppExtension
 from packaging.version import parse
-from torch.torch_version import __version__, TorchVersion
+from torch.torch_version import __version__
 from os.path import join as Path
 import os
 import subprocess
@@ -116,32 +116,6 @@ def get_commit_hash(base_dir):
     return git_sha
 
 
-def get_required_ipex_version(pt_version):
-    # This function returns the most suitable version of
-    # intel_extension_for_pytorch to be installed, which is required for
-    # zentorch.llm.optimize to work. This version is based on the
-    # version of torch that is being used.
-
-    torch_version = str(pt_version).split(".")
-    torch_major_version = torch_version[0]
-    torch_minor_version = torch_version[1]
-    torch_major_minor_version = TorchVersion(
-        ".".join([torch_major_version, torch_minor_version])
-    )
-
-    # Check for minimum torch version of 2.7. This is required for
-    # intel_extension_for_pytorch to work under the hood.
-    if torch_major_minor_version >= TorchVersion("2.7.0"):
-        required_ipex_version = ".".join(
-            [torch_major_version, torch_minor_version, "0"]
-        )
-
-        # Behaviour of tilda in the installation process
-        # "torch~=2.x" installs PT 2.8. i.e Latest in 2.x
-        # "torch~=2.7.x" installs PT 2.7.0 i.e Latest in 2.7.x
-        return f"intel_extension_for_pytorch~={required_ipex_version}"
-
-
 #   ZenTorch_BUILD_VERSION
 #     specify the version of zentorch, rather than the hard-coded version
 #     in this file; used when we're building binaries for distribution
@@ -213,15 +187,6 @@ packages = [
 if ZENTORCH_VLLM_PLUGIN_BUILD:
     packages.append(PACKAGE_NAME + ".vllm")
 extras_require = {}
-
-# maybe_valid_ipex_version will contain either the valid ipex version
-# if torch version is greater than or equal to 2.3.0.
-# If not, maybe_valid_ipex_version will be None.
-maybe_valid_ipex_version = get_required_ipex_version(PT_VERSION)
-if maybe_valid_ipex_version:
-    # pip install zentorch[llm] # ipex
-    # pip install zentorch
-    extras_require["llm"] = maybe_valid_ipex_version
 
 with open(_build_info_path, "w") as f:
     f.write(_build_config)
