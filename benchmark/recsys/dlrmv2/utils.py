@@ -69,7 +69,10 @@ def get_args():
         "--model",
         type=str,
         default="export_quant32",
-        help="type of model to load [quant32,fp32,qdq,quant16,export_quant32]",
+        help=(
+            "type of model to load [quant32, fp32, bf16, qdq, quant16, "
+            "export_quant32, export_quant16]"
+        ),
     )
     parser.add_argument(
         "--enable_profiling", action="store_true", help="Enable profiling"

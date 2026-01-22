@@ -72,7 +72,7 @@ def sub_process(
     i,
 ):
     zentorch.utils.thread_bind(affinity)
-    if model_type == "export_quant32":
+    if model_type in ["export_quant32", "export_quant16"]:
         model = model.module(check_guards=False)
         model = torch.compile(model, backend="zentorch")
 
@@ -197,7 +197,7 @@ if __name__ == "__main__":
                 execute_event,
                 args.accuracy_mode,
                 args.num_warmups,
-                args.model == "quant16",
+                args.model in ["bf16", "quant16", "export_quant16"],
                 args.enable_profiling,
                 list(
                     range(

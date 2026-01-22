@@ -83,7 +83,7 @@ def get_compiled_model(args):
             raise RuntimeError(
                 f"Failed to load quantized model from {args.model_path}. Error: {e}"
             ) from e
-    elif args.model == "fp32":
+    elif args.model in ["fp32", "bf16"]:
         try:
             model.load_state_dict(
                 torch.load(
@@ -91,9 +91,11 @@ def get_compiled_model(args):
                     weights_only=False,
                 )
             )
+            if args.model == "bf16":
+                model = model.to(dtype=torch.bfloat16)
         except Exception as e:
             raise RuntimeError(
-                f"Failed to load fp32 model from {args.model_path}. Error: {e}"
+                f"Failed to load {args.model} model from {args.model_path}. Error: {e}"
             ) from e
     elif args.model == "qdq_model":
         try:
@@ -121,20 +123,21 @@ def get_compiled_model(args):
             raise RuntimeError(
                 f"Failed to load quant16 model from {args.model_path}. Error: {e}"
             ) from e
-    elif args.model == "export_quant32":
+    elif args.model in ["export_quant32", "export_quant16"]:
         try:
             import torchao  # noqa: F401
             model = torch.export.load(args.model_path)
         except Exception as e:
             raise RuntimeError(
-                f"Failed to load export_quant32 model from {args.model_path}. Error: {e}"
+                f"Failed to load {args.model} model from {args.model_path}. Error: {e}"
             ) from e
     else:
         raise ValueError(
-            f"Unsupported model type: {args.model}. Supported types are: quant32, fp32, qdq_model, quant16."
+            f"Unsupported model type: {args.model}. Supported types are: quant32, fp32, "
+            f"bf16, qdq_model, quant16, export_quant32, export_quant16."
         )
     print("Sharing memory", flush=True)
-    if args.model == "export_quant32":
+    if args.model in ["export_quant32", "export_quant16"]:
         for _, tensor in model.state_dict.items():
             if isinstance(tensor, torch.Tensor):
                 tensor.share_memory_()  # Move to shared memory
@@ -142,7 +145,7 @@ def get_compiled_model(args):
         model = model.cpu().share_memory()
     print("share_memory ready", flush=True)
     try:
-        if args.model == "export_quant32":
+        if args.model in ["export_quant32", "export_quant16"]:
             # As model is exported program, compile pass will be added in the subprocess
             compiled_graph = model
         else:
