@@ -122,11 +122,7 @@ No code changes are required. Once installed, simply run your vLLM inference wor
 ### Environment Variables
 
 ```bash
-# ZenDNN settings (USE_ZENDNN_MATMUL_DIRECT=1 is now the default)
 export TORCHINDUCTOR_FREEZING=0
-export ZENTORCH_LINEAR=1
-export ZENDNNL_MATMUL_WEIGHT_CACHE=1
-export ZENDNNL_MATMUL_ALGO=1
 # vLLM CPU settings
 export VLLM_CPU_KVCACHE_SPACE=90  # GB for KV cache
 export VLLM_CPU_OMP_THREADS_BIND=0-95  # CPU cores to use
@@ -155,8 +151,8 @@ print(output)
 ```bash
 vllm bench throughput \
     --model meta-llama/Llama-3.1-8B \
-    --input-len 128 \
-    --output-len 128 \
+    --random-input-len 128 \
+    --random-output-len 128 \
     --num-prompts 100
 ```
 
@@ -166,8 +162,8 @@ vllm bench throughput \
 export VLLM_TORCH_PROFILER_DIR="."
 vllm bench throughput \
     --model meta-llama/Llama-3.1-8B \
-    --input-len 128 \
-    --output-len 128 \
+    --random-input-len 128 \
+    --random-output-len 128 \
     --num-prompts 10 \
     --profile
 ```
