@@ -607,7 +607,10 @@ inline void zendnnl_direct_kernel(
     const at::Tensor &result, const float &alpha,
     const std::vector<int64_t> &post_op_ids,
     const std::vector<at::Tensor> &post_op_buffers, const bool is_weight_const,
-    const bool is_weight_prepacked) {
+    const bool is_weight_prepacked,
+    std::optional<std::reference_wrapper<
+        zendnnl::lowoha::matmul::matmul_quantization_params_t>>
+        quantization_params = std::nullopt) {
 
   // TODO
   // Check if we can use tensor.strided() instead of is_stride_valid()
@@ -671,6 +674,11 @@ inline void zendnnl_direct_kernel(
   params.dtypes = matmul_dtype;
   if (is_weight_prepacked) {
     params.mem_format_b = 'r';
+  }
+  if (quantization_params.has_value()) {
+    zendnnl::lowoha::matmul::matmul_quantization_params_t &quant_params_ref =
+        quantization_params->get();
+    params.quant_params = quant_params_ref;
   }
 
   std::vector<long int> result_sizes =
