@@ -348,7 +348,8 @@ void zendnnl_quantized_matmul_impl(
   // function. This requires changes in multiple files. Hence a TODO for now.
   auto matmul_operator = matmul_operator_t();
   set_matmul_operator_attributes(matmul_operator, matmul_context, z_q_input,
-                                 z_result, post_op_ids, post_op_buffers);
+                                 z_result, post_op_ids, post_op_buffers,
+                                 zentorch_op_name);
 
   status_t status = matmul_operator.execute();
 

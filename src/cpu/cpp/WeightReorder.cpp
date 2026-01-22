@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2025 Advanced Micro Devices, Inc.
+ * Copyright (c) 2025-2026 Advanced Micro Devices, Inc.
  * All rights reserved.
  ******************************************************************************/
 
@@ -17,8 +17,9 @@ inline bool is_tensor_2d_and_transposed(const at::Tensor &t) {
   return false;
 }
 
-at::Tensor zentorch_weight_prepack_for_linear(const at::Tensor &weight,
-                                              std::string_view zendnn_op_name) {
+at::Tensor
+zentorch_weight_prepack_for_linear(const at::Tensor &weight,
+                                   const std::string &zentorch_op_name) {
   ZENTORCH_CHECK(weight.dim() == 2,
                  "Weight tensor must be 2D for linear layer prepacking, got ",
                  weight.dim(), "D tensor.");
@@ -39,8 +40,10 @@ at::Tensor zentorch_weight_prepack_for_linear(const at::Tensor &weight,
   auto context = reorder_context_t().set_algo_format("aocl").create();
   ZENTORCH_CHECK(context.check(), "reorder context creation failed.");
 
-  auto reorder_op =
-      reorder_operator_t().set_name("reorder_op").set_context(context).create();
+  auto reorder_op = reorder_operator_t()
+                        .set_name(zentorch_op_name)
+                        .set_context(context)
+                        .create();
   // Check if reorder operation creation is successful.
   ZENTORCH_CHECK(!reorder_op.is_bad_object(), "operator ",
                  reorder_op.get_name(), " creation failed.");

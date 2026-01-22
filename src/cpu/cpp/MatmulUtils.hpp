@@ -764,9 +764,10 @@ set_matmul_operator_attributes(matmul_operator_t &matmul_operator,
                                const matmul_context_t &matmul_context,
                                tensor_t &input_tensor, tensor_t &output_tensor,
                                const std::vector<int64_t> &post_op_ids,
-                               const std::vector<at::Tensor> &post_op_buffers) {
+                               const std::vector<at::Tensor> &post_op_buffers,
+                               const std::string &matmul_operator_name) {
 
-  matmul_operator.set_name("matmul_operator")
+  matmul_operator.set_name(matmul_operator_name)
       .set_context(matmul_context)
       .create();
 

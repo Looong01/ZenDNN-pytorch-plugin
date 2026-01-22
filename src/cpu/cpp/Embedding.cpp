@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2023-2025 Advanced Micro Devices, Inc.
+ * Copyright (c) 2023-2026 Advanced Micro Devices, Inc.
  * All rights reserved.
  ******************************************************************************/
 
@@ -46,8 +46,7 @@ at::Tensor zendnnl_embedding_impl(const at::Tensor &weight,
                                    false /*per_sample_weights_defined*/);
 
   embag_operator_t embedding_operator = embag_operator_t();
-  const std::string operator_name = "embedding";
-  set_embedding_operator_attributes(embedding_operator, operator_name,
+  set_embedding_operator_attributes(embedding_operator, zentorch_op_name,
                                     embedding_context, indices_tensor,
                                     output_tensor);
 

@@ -153,7 +153,8 @@ at::Tensor zendnnl_matmul_impl(
   // define matmul operator
   auto matmul_operator = matmul_operator_t();
   set_matmul_operator_attributes(matmul_operator, matmul_context, input_tensor,
-                                 output_tensor, post_op_ids, post_op_buffers);
+                                 output_tensor, post_op_ids, post_op_buffers,
+                                 zentorch_op_name);
 
   status_t status = matmul_operator.execute();
 

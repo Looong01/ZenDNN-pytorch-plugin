@@ -72,13 +72,14 @@ inline void set_embedding_context_attributes(
 }
 
 inline void set_embedding_operator_attributes(
-    embag_operator_t &embedding_operator, const std::string &operator_name,
+    embag_operator_t &embedding_operator,
+    const std::string &embedding_operator_name,
     embag_context_t &embedding_context, tensor_t &indices, tensor_t &output,
     std::optional<std::reference_wrapper<tensor_t>> offsets_opt_ref =
         std::nullopt,
     std::optional<std::reference_wrapper<tensor_t>> per_sample_weights_opt_ref =
         std::nullopt) {
-  embedding_operator.set_name(operator_name)
+  embedding_operator.set_name(embedding_operator_name)
       .set_context(embedding_context)
       .create();
   ZENTORCH_CHECK(!embedding_operator.is_bad_object(), "operator ",

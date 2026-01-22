@@ -195,14 +195,13 @@ void zendnnl_quant_embedding_bag_out(
 
   // define embedding bag operator
   embag_operator_t embedding_bag_operator = embag_operator_t();
-  const std::string operator_name = "quant_embedding_bag";
   if (per_sample_weights_defined) {
-    set_embedding_operator_attributes(embedding_bag_operator, operator_name,
+    set_embedding_operator_attributes(embedding_bag_operator, zentorch_op_name,
                                       embedding_bag_context, indices_tensor,
                                       output_tensor, offsets_tensor,
                                       per_sample_weights_tensor);
   } else {
-    set_embedding_operator_attributes(embedding_bag_operator, operator_name,
+    set_embedding_operator_attributes(embedding_bag_operator, zentorch_op_name,
                                       embedding_bag_context, indices_tensor,
                                       output_tensor, offsets_tensor);
   }
