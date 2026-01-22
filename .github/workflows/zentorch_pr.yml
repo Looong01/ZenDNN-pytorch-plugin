@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       zendnn_ref:
-        description: 'ZenDNN branch or PR ref (optional, e.g. refs/pull/123/head)'
+        description: 'ZenDNN refs or commit SHAs (comma/space/newline-separated, e.g. "refs/pull/123/head, refs/heads/feature/foo, 0123abcd")'
         required: false
         default: ''
       zendnnl_ref:
@@ -40,7 +40,7 @@ jobs:
     env:
       PYTHON_VERSION: '3.10'
       ZENTORCH_VERSION: '5.2.0'
-      NATIVE_TORCH_VERSION: '2.9.1'
+      NATIVE_TORCH_VERSION: '2.10.0'
       UNWANTED_KEYWORDS: 'stackoverflow,MSDN,wiki,microsoft'
       # WORKSPACE and PARENT_DIR will be set dynamically in the steps
       ZENTORCH_USE_LOCAL_ZENDNN: ${{ github.event.inputs.zentorch_use_local_zendnn || github.event.client_payload.zentorch_use_local_zendnn || '1' }}
@@ -73,92 +73,240 @@ jobs:
     steps:
       - name: Clean workspace before checkout
         run: |
-         echo "Cleaning old workspace data..."
-         ls -al $GITHUB_WORKSPACE || true
-         rm -rf $GITHUB_WORKSPACE/* || true
-         rm -rf $GITHUB_WORKSPACE/.[!.]* || true
-         echo "Workspace cleaned."
-         ls -al $GITHUB_WORKSPACE
+          echo "Cleaning old workspace data..."
+          ls -al $GITHUB_WORKSPACE || true
+          rm -rf $GITHUB_WORKSPACE/* || true
+          rm -rf $GITHUB_WORKSPACE/.[!.]* || true
+          echo "Workspace cleaned."
+          ls -al $GITHUB_WORKSPACE
         shell: bash
       
       - name: Display Triggering PR Information
         if: github.event_name == 'repository_dispatch'
         run: |
-         echo "=============================================="
-         echo "   TRIGGERED BY EXTERNAL REPOSITORY PR"
-         echo "=============================================="
-         echo "This workflow was triggered by repository dispatch"
-         echo "   Dispatch Type: ${{ github.event.action }}"
-         echo ""
-         # Check which repository triggered this workflow
-         if [ "${{ github.event.action }}" = "zendnn-pr" ] || [ "${{ github.event.action }}" = "zendnn-zentorch-zendnnl-pr" ]; then
-          # ZenDNN repository triggered this workflow
-          if [ -n "${{ env.ZENDNN_TRIGGERING_PR_NUMBER }}" ]; then
-           echo "🔵 TRIGGERED BY ZENDNN PR:"
-           echo "   Repository: ${{ env.ZENDNN_TRIGGERING_REPO }}"
-           echo "   PR Number: #${{ env.ZENDNN_TRIGGERING_PR_NUMBER }}"
-           echo "   PR Title: ${{ env.ZENDNN_TRIGGERING_PR_TITLE }}"
-           echo "   PR Author: ${{ env.ZENDNN_TRIGGERING_PR_AUTHOR }}"
-           echo "   PR URL: ${{ env.ZENDNN_TRIGGERING_PR_URL }}"
-           echo "   Original Event: ${{ env.ZENDNN_TRIGGERING_EVENT }}"
-           echo "   ZenDNN Ref: ${{ github.event.client_payload.zendnn_ref }}"
-           echo "   ZenDNN SHA: ${{ github.event.client_payload.zendnn_ref_sha }}"
-          else
-           echo "🔵 TRIGGERED BY ZENDNN (No PR info - likely push/dispatch)"
-           echo "   Repository: AMD-Zenai/ZenDNN"
-           echo "   ZenDNN Ref: ${{ github.event.client_payload.zendnn_ref }}"
-           echo "   ZenDNN SHA: ${{ github.event.client_payload.zendnn_ref_sha }}"
-          fi
-         elif [ "${{ github.event.action }}" = "zendnnTools-pr" ] || [ "${{ github.event.action }}" = "zendnnTools-zentorch-zendnnl-pr" ]; then
-          # ZenDNN_tools repository triggered this workflow
-          if [ -n "${{ env.TRIGGERING_PR_NUMBER }}" ]; then
-           echo "🟡 TRIGGERED BY ZENDNN_TOOLS PR:"
-           echo "   Repository: ${{ env.TRIGGERING_REPO }}"
-           echo "   PR Number: #${{ env.TRIGGERING_PR_NUMBER }}"
-           echo "   PR Title: ${{ env.TRIGGERING_PR_TITLE }}"
-           echo "   PR Author: ${{ env.TRIGGERING_PR_AUTHOR }}"
-           echo "   PR URL: ${{ env.TRIGGERING_PR_URL }}"
-           echo "   Original Event: ${{ env.TRIGGERING_EVENT }}"
-           echo "   ZenDNN_tools Ref: ${{ github.event.client_payload.zendnntools_ref }}"
-           echo "   ZenDNN_tools SHA: ${{ github.event.client_payload.zendnntools_ref_sha }}"
-          else
-           echo "🟡 TRIGGERED BY ZENDNN_TOOLS (No PR info - likely push/dispatch)"
-           echo "   Repository: AMD-Zenai/ZenDNN_tools"
-           echo "   ZenDNN_tools Ref: ${{ github.event.client_payload.zendnntools_ref }}"
-           echo "   ZenDNN_tools SHA: ${{ github.event.client_payload.zendnntools_ref_sha }}"
-          fi
-         elif [ "${{ github.event.action }}" = "zendnnl-pr" ]; then
-          # ZenDNNL repository triggered this workflow
-          if [ -n "${{ env.ZENDNNL_TRIGGERING_PR_NUMBER }}" ]; then
-           echo "🔵 TRIGGERED BY ZENDNNL PR:"
-           echo "   Repository: ${{ env.ZENDNNL_TRIGGERING_REPO }}"
-           echo "   PR Number: #${{ env.ZENDNNL_TRIGGERING_PR_NUMBER }}"
-           echo "   PR Title: ${{ env.ZENDNNL_TRIGGERING_PR_TITLE }}"
-           echo "   PR Author: ${{ env.ZENDNNL_TRIGGERING_PR_AUTHOR }}"
-           echo "   PR URL: ${{ env.ZENDNNL_TRIGGERING_PR_URL }}"
-           echo "   Original Event: ${{ env.ZENDNNL_TRIGGERING_EVENT }}"
-           echo "   ZenDNNL Ref: ${{ github.event.client_payload.zendnnl_ref }}"
-           echo "   ZenDNNL SHA: ${{ github.event.client_payload.zendnnl_ref_sha }}"
-          else
-           echo "🔵 TRIGGERED BY ZENDNNL (No PR info - likely push/dispatch)"
-           echo "   Repository: AMD-Zenai/ZenDNN"
-           echo "   ZenDNNL Ref: ${{ github.event.client_payload.zendnnl_ref }}"
-           echo "   ZenDNNL SHA: ${{ github.event.client_payload.zendnnl_ref_sha }}"
-          fi
-         else
-          # Unknown or other trigger type
-          echo "⚠️  TRIGGERED BY UNKNOWN SOURCE:"
+          echo "=============================================="
+          echo "   TRIGGERED BY EXTERNAL REPOSITORY PR"
+          echo "=============================================="
+          echo "This workflow was triggered by repository dispatch"
           echo "   Dispatch Type: ${{ github.event.action }}"
-          echo "   Available payload:"
-          echo '${{ toJson(github.event.client_payload) }}'
-         fi
-         echo "=============================================="
-         echo ""
-        shell: bash 
+          echo ""
+          # Check which repository triggered this workflow
+          if [ "${{ github.event.action }}" = "zendnn-pr" ] || [ "${{ github.event.action }}" = "zendnn-zentorch-zendnnl-pr" ]; then
+            # ZenDNN repository triggered this workflow
+            if [ -n "${{ env.ZENDNN_TRIGGERING_PR_NUMBER }}" ]; then
+              echo "🔵 TRIGGERED BY ZENDNN PR:"
+              echo "   Repository: ${{ env.ZENDNN_TRIGGERING_REPO }}"
+              echo "   PR Number: #${{ env.ZENDNN_TRIGGERING_PR_NUMBER }}"
+              echo "   PR Title: ${{ env.ZENDNN_TRIGGERING_PR_TITLE }}"
+              echo "   PR Author: ${{ env.ZENDNN_TRIGGERING_PR_AUTHOR }}"
+              echo "   PR URL: ${{ env.ZENDNN_TRIGGERING_PR_URL }}"
+              echo "   Original Event: ${{ env.ZENDNN_TRIGGERING_EVENT }}"
+              echo "   ZenDNN Ref: ${{ github.event.client_payload.zendnn_ref }}"
+              echo "   ZenDNN SHA: ${{ github.event.client_payload.zendnn_ref_sha }}"
+            else
+              echo "🔵 TRIGGERED BY ZENDNN (No PR info - likely push/dispatch)"
+              echo "   Repository: AMD-Zenai/ZenDNN"
+              echo "   ZenDNN Ref: ${{ github.event.client_payload.zendnn_ref }}"
+              echo "   ZenDNN SHA: ${{ github.event.client_payload.zendnn_ref_sha }}"
+            fi
+          elif [ "${{ github.event.action }}" = "zendnnTools-pr" ] || [ "${{ github.event.action }}" = "zendnnTools-zentorch-zendnnl-pr" ]; then
+            # ZenDNN_tools repository triggered this workflow
+            if [ -n "${{ env.TRIGGERING_PR_NUMBER }}" ]; then
+              echo "🟡 TRIGGERED BY ZENDNN_TOOLS PR:"
+              echo "   Repository: ${{ env.TRIGGERING_REPO }}"
+              echo "   PR Number: #${{ env.TRIGGERING_PR_NUMBER }}"
+              echo "   PR Title: ${{ env.TRIGGERING_PR_TITLE }}"
+              echo "   PR Author: ${{ env.TRIGGERING_PR_AUTHOR }}"
+              echo "   PR URL: ${{ env.TRIGGERING_PR_URL }}"
+              echo "   Original Event: ${{ env.TRIGGERING_EVENT }}"
+              echo "   ZenDNN_tools Ref: ${{ github.event.client_payload.zendnntools_ref }}"
+              echo "   ZenDNN_tools SHA: ${{ github.event.client_payload.zendnntools_ref_sha }}"
+            else
+              echo "🟡 TRIGGERED BY ZENDNN_TOOLS (No PR info - likely push/dispatch)"
+              echo "   Repository: AMD-Zenai/ZenDNN_tools"
+              echo "   ZenDNN_tools Ref: ${{ github.event.client_payload.zendnntools_ref }}"
+              echo "   ZenDNN_tools SHA: ${{ github.event.client_payload.zendnntools_ref_sha }}"
+            fi
+          elif [ "${{ github.event.action }}" = "zendnnl-pr" ]; then
+            # ZenDNNL repository triggered this workflow
+            if [ -n "${{ env.ZENDNNL_TRIGGERING_PR_NUMBER }}" ]; then
+              echo "🔵 TRIGGERED BY ZENDNNL PR:"
+              echo "   Repository: ${{ env.ZENDNNL_TRIGGERING_REPO }}"
+              echo "   PR Number: #${{ env.ZENDNNL_TRIGGERING_PR_NUMBER }}"
+              echo "   PR Title: ${{ env.ZENDNNL_TRIGGERING_PR_TITLE }}"
+              echo "   PR Author: ${{ env.ZENDNNL_TRIGGERING_PR_AUTHOR }}"
+              echo "   PR URL: ${{ env.ZENDNNL_TRIGGERING_PR_URL }}"
+              echo "   Original Event: ${{ env.ZENDNNL_TRIGGERING_EVENT }}"
+              echo "   ZenDNNL Ref: ${{ github.event.client_payload.zendnnl_ref }}"
+              echo "   ZenDNNL SHA: ${{ github.event.client_payload.zendnnl_ref_sha }}"
+            else
+              echo "🔵 TRIGGERED BY ZENDNNL (No PR info - likely push/dispatch)"
+              echo "   Repository: AMD-Zenai/ZenDNN"
+              echo "   ZenDNNL Ref: ${{ github.event.client_payload.zendnnl_ref }}"
+              echo "   ZenDNNL SHA: ${{ github.event.client_payload.zendnnl_ref_sha }}"
+            fi
+          else
+            # Unknown or other trigger type
+            echo "⚠️  TRIGGERED BY UNKNOWN SOURCE:"
+            echo "   Dispatch Type: ${{ github.event.action }}"
+            echo "   Available payload:"
+            echo '${{ toJson(github.event.client_payload) }}'
+          fi
+          echo "=============================================="
+          echo ""
+        shell: bash
+
       - name: Checkout ZenDNN_PyTorch_Plugin
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Fetch ALL history including all commits
+
+      # Fetch and rebase ZenDNN_PyTorch_Plugin for workflow_dispatch
+      - name: Fetch ZenDNN_PyTorch_Plugin refs and rebase on latest main (Zentorch)
+        if: env.ZENTORCH_REF != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          # Configure git for rebase/merge operations
+          git config user.name "CI Bot"
+          git config user.email "ci-bot@amd.com"
+          
+          normalize_list() {
+            printf "%s" "${1:-}" | tr ', ' '\n' | sed '/^$/d'
+          }
+
+          cd "${GITHUB_WORKSPACE}"
+
+          echo "Prefetching plugin branches/tags/PR heads with full history..."
+          git fetch --no-tags --prune origin \
+            '+refs/heads/*:refs/remotes/origin/*' \
+            '+refs/tags/*:refs/tags/*' \
+            '+refs/pull/*/head:refs/remotes/origin/pull/*' || true
+
+          # Always fetch latest main for rebasing
+          echo "Fetching latest main branch..."
+          git fetch origin main:refs/remotes/origin/main
+
+          TARGET_LIST="$(normalize_list "${ZENTORCH_REF}")"
+          printf "Targets:\n%s\n" "$TARGET_LIST"
+
+          last_sha=""
+          original_sha=""
+          while IFS= read -r item; do
+            if printf '%s' "$item" | grep -qiE '^[0-9a-f]{7,40}$'; then
+              echo "Processing commit SHA: $item"
+              if git cat-file -e "${item}^{commit}" 2>/dev/null; then
+                last_sha="$item"
+                original_sha="$item"
+              else
+                ref="$(git ls-remote origin | awk -v sha="$item" '$1==sha{print $2; exit}')"
+                if [ -n "$ref" ]; then
+                  echo "Found ref $ref for $item; fetching with full history..."
+                  git fetch --unshallow origin "$ref" 2>/dev/null || git fetch origin "$ref"
+                  if git cat-file -e "${item}^{commit}" 2>/dev/null; then
+                    last_sha="$item"
+                    original_sha="$item"
+                  else
+                    echo "WARNING: Could not fetch/resolve $item"
+                  fi
+                else
+                  echo "WARNING: No remote ref found for $item"
+                fi
+              fi
+            else
+              echo "Fetching ref with full history: $item"
+              # For PR refs, fetch the full branch to get all commits
+              if echo "$item" | grep -q "refs/pull/"; then
+                PR_NUM=$(echo "$item" | grep -oP 'pull/\K[0-9]+' || echo "")
+                if [ -n "$PR_NUM" ]; then
+                  echo "Detected PR #$PR_NUM, fetching full PR branch..."
+                  git fetch origin "$item:refs/remotes/origin/pr-$PR_NUM" 2>/dev/null || git fetch origin "$item"
+                else
+                  git fetch origin "$item"
+                fi
+              else
+                git fetch origin "$item"
+              fi
+              
+              if [ $? -eq 0 ]; then
+                fetched_sha="$(git rev-parse FETCH_HEAD)"
+                last_sha="$fetched_sha"
+                original_sha="$fetched_sha"
+                echo "Fetched $item -> $fetched_sha"
+                
+                # Show all commits in this ref (for verification)
+                echo "Commits in this ref (last 20):"
+                git log --oneline -20 FETCH_HEAD
+              else
+                echo "WARNING: Failed to fetch $item"
+              fi
+            fi
+          done <<< "$TARGET_LIST"
+
+          if [ -n "${last_sha:-}" ]; then
+            echo ""
+            echo "=============================================="
+            echo "   REBASING ZENTORCH ONTO LATEST MAIN"
+            echo "=============================================="
+            
+            # Save original SHA for status reporting
+            echo "ORIGINAL_ZENTORCH_SHA=$original_sha" >> $GITHUB_ENV
+            
+            # Checkout the target
+            git checkout -q "$last_sha"
+            
+            # Check if we need to rebase
+            MERGE_BASE=$(git merge-base HEAD origin/main 2>/dev/null || echo "")
+            MAIN_HEAD=$(git rev-parse origin/main)
+            
+            echo "Original SHA:  $original_sha"
+            echo "Merge base:    $MERGE_BASE"
+            echo "Latest main:   $MAIN_HEAD"
+            
+            if [ -n "$MERGE_BASE" ] && [ "$MERGE_BASE" != "$MAIN_HEAD" ]; then
+              echo ""
+              echo "Target is not based on latest main. Rebasing..."
+              
+              # Count commits to rebase
+              COMMIT_COUNT=$(git rev-list --count $MERGE_BASE..HEAD 2>/dev/null || echo "unknown")
+              echo "Commits to rebase: $COMMIT_COUNT"
+              
+              if git rebase origin/main; then
+                echo ""
+                echo "✅ Rebase successful!"
+                echo "New HEAD: $(git rev-parse HEAD)"
+                echo ""
+                echo "Rebased commits:"
+                git log --oneline -20
+              else
+                echo ""
+                echo "⚠️ Rebase failed due to conflicts. Aborting and trying merge..."
+                git rebase --abort
+                
+                git checkout -q "$last_sha"
+                if git merge origin/main -m "Merge latest main into PR for CI"; then
+                  echo ""
+                  echo "✅ Merge successful!"
+                  echo "New HEAD: $(git rev-parse HEAD)"
+                else
+                  echo ""
+                  echo "❌ Merge also failed. Using original commit."
+                  git merge --abort
+                  git checkout -q "$last_sha"
+                fi
+              fi
+            else
+              echo ""
+              echo "✅ Already based on latest main. No rebase needed."
+            fi
+            
+            echo ""
+            echo "=== Final commit history ==="
+            git log --oneline -20
+          else
+            echo "No plugin targets resolved — staying on current commit."
+          fi
 
       - name: Set WORKSPACE and PARENT_DIR to parent of repo
         run: |
@@ -167,25 +315,178 @@ jobs:
           echo "PARENT_DIR=$(dirname "${GITHUB_WORKSPACE}")" >> $GITHUB_ENV
           echo "WORKSPACE=$(dirname "${GITHUB_WORKSPACE}")" >> $GITHUB_ENV
 
-      - name: Clone ZenDNN if needed
+      - name: Clone ZenDNN if needed (multi-ref/SHA aware with rebase on latest main)
         if: env.ZENTORCH_USE_LOCAL_ZENDNN == '1'
+        shell: bash
         run: |
-          git clone  --branch main https://${{ secrets.ZIAIE_PAT }}@github.com/AMD-Zenai/ZenDNN.git "$PARENT_DIR/ZenDNN"
-          if [ "${ZENDNN_REF}" != "" ]; then
-            cd "$PARENT_DIR/ZenDNN"
-            git fetch origin "${ZENDNN_REF}"
-            git checkout FETCH_HEAD
-            cd "$PARENT_DIR"
-          elif [ "${ZENDNNL_REF}" != "" ]; then
-            cd "$PARENT_DIR/ZenDNN"
-            echo "Using ZENDNNL_REF: ${ZENDNNL_REF}"
-            git fetch origin "${ZENDNNL_REF}"
-            git checkout FETCH_HEAD
-            cd "$PARENT_DIR"
+          set -euo pipefail
+          
+          # Clone with FULL history (no --depth limit)
+          git clone --branch main https://${{ secrets.ZIAIE_PAT }}@github.com/AMD-Zenai/ZenDNN.git "$PARENT_DIR/ZenDNN"
+
+          cd "$PARENT_DIR/ZenDNN"
+          
+          # Configure git for rebase/merge operations
+          git config user.name "CI Bot"
+          git config user.email "ci-bot@amd.com"
+
+          normalize_list() {
+            printf "%s" "${1:-}" | tr ', ' '\n' | sed '/^$/d'
+          }
+
+          TARGET_LIST=""
+          if [ -n "${ZENDNN_REF:-}" ]; then
+            TARGET_LIST="$(normalize_list "${ZENDNN_REF}")"
+            echo "Using ZENDNN_REF list:"
+            printf "%s\n" "$TARGET_LIST"
+          elif [ -n "${ZENDNNL_REF:-}" ]; then
+            TARGET_LIST="$(normalize_list "${ZENDNNL_REF}")"
+            echo "Using ZENDNNL_REF list:"
+            printf "%s\n" "$TARGET_LIST"
           else
             echo "No ZENDNN_REF or ZENDNNL_REF provided, using main branch"
           fi
+
+          if [ -n "${TARGET_LIST:-}" ]; then
+            # Fetch ALL remote refs with full history
+            echo "Prefetching remote branches/tags/PR heads with FULL history..."
+            git fetch --no-tags --prune origin \
+              '+refs/heads/*:refs/remotes/origin/*' \
+              '+refs/tags/*:refs/tags/*' \
+              '+refs/pull/*/head:refs/remotes/origin/pull/*' 2>/dev/null || \
+            git fetch --no-tags --prune origin \
+              '+refs/heads/*:refs/remotes/origin/*' \
+              '+refs/tags/*:refs/tags/*' \
+              '+refs/pull/*/head:refs/remotes/origin/pull/*' || true
+
+            # Always fetch latest main for rebasing
+            echo "Fetching latest main branch..."
+            git fetch origin main:refs/remotes/origin/main
+
+            last_sha=""
+            original_sha=""
+            while IFS= read -r item; do
+              if printf '%s' "$item" | grep -qiE '^[0-9a-f]{7,40}$'; then
+                echo "Processing commit SHA: $item"
+                if git cat-file -e "${item}^{commit}" 2>/dev/null; then
+                  echo "Commit $item is present locally."
+                  last_sha="$item"
+                  original_sha="$item"
+                else
+                  echo "Commit $item not present yet; trying to locate a ref that contains it..."
+                  ref="$(git ls-remote origin | awk -v sha="$item" '$1==sha{print $2; exit}')"
+                  if [ -n "$ref" ]; then
+                    echo "Found ref $ref for $item; fetching full history..."
+                    if git fetch origin "$ref"; then
+                      if git cat-file -e "${item}^{commit}" 2>/dev/null; then
+                        echo "Commit $item fetched successfully."
+                        last_sha="$item"
+                        original_sha="$item"
+                      else
+                        echo "WARNING: Still cannot find commit $item after fetching $ref."
+                      fi
+                    else
+                      echo "WARNING: Failed to fetch ref $ref for $item."
+                    fi
+                  else
+                    echo "WARNING: Could not find a remote ref that exactly matches $item."
+                  fi
+                fi
+              else
+                echo "Fetching ref with full history: $item"
+                
+                # For PR refs, ensure we get all commits
+                if echo "$item" | grep -q "refs/pull/"; then
+                  PR_NUM=$(echo "$item" | sed -n 's|refs/pull/\([0-9]*\)/head|\1|p')
+                  if [ -n "$PR_NUM" ]; then
+                    echo "Detected PR #$PR_NUM, fetching complete PR..."
+                    # Fetch both the PR head and the base to ensure full history
+                    git fetch origin "$item" "+refs/pull/$PR_NUM/merge:refs/remotes/origin/pr-$PR_NUM-merge" 2>/dev/null || true
+                  fi
+                fi
+                
+                if git fetch origin "$item"; then
+                  fetched_sha="$(git rev-parse FETCH_HEAD)"
+                  echo "Fetched $item -> $fetched_sha"
+                  last_sha="$fetched_sha"
+                  original_sha="$fetched_sha"
+                  
+                  # Display commits for verification
+                  echo "Recent commits in fetched ref:"
+                  git log --oneline -10 FETCH_HEAD
+                else
+                  echo "WARNING: Failed to fetch ref '$item' from origin."
+                fi
+              fi
+            done <<< "$TARGET_LIST"
+
+            if [ -n "${last_sha:-}" ]; then
+              echo ""
+              echo "=============================================="
+              echo "   REBASING ZENDNN ONTO LATEST MAIN"
+              echo "=============================================="
+              
+              # Save original SHA for status reporting
+              echo "ORIGINAL_ZENDNN_SHA=$original_sha" >> $GITHUB_ENV
+              
+              # Checkout the target
+              git checkout -q "$last_sha"
+              
+              # Check if we need to rebase
+              MERGE_BASE=$(git merge-base HEAD origin/main 2>/dev/null || echo "")
+              MAIN_HEAD=$(git rev-parse origin/main)
+              
+              echo "Original SHA:  $original_sha"
+              echo "Merge base:    $MERGE_BASE"
+              echo "Latest main:   $MAIN_HEAD"
+              
+              if [ -n "$MERGE_BASE" ] && [ "$MERGE_BASE" != "$MAIN_HEAD" ]; then
+                echo ""
+                echo "Target is not based on latest main. Rebasing..."
+                
+                # Count commits to rebase
+                COMMIT_COUNT=$(git rev-list --count $MERGE_BASE..HEAD 2>/dev/null || echo "unknown")
+                echo "Commits to rebase: $COMMIT_COUNT"
+                
+                if git rebase origin/main; then
+                  echo ""
+                  echo "✅ Rebase successful!"
+                  echo "New HEAD: $(git rev-parse HEAD)"
+                  echo ""
+                  echo "Rebased commits:"
+                  git log --oneline -20
+                else
+                  echo ""
+                  echo "⚠️ Rebase failed due to conflicts. Aborting and trying merge..."
+                  git rebase --abort
+                  
+                  git checkout -q "$last_sha"
+                  if git merge origin/main -m "Merge latest main into PR for CI"; then
+                    echo ""
+                    echo "✅ Merge successful!"
+                    echo "New HEAD: $(git rev-parse HEAD)"
+                  else
+                    echo ""
+                    echo "❌ Merge also failed. Using original commit."
+                    git merge --abort
+                    git checkout -q "$last_sha"
+                  fi
+                fi
+              else
+                echo ""
+                echo "✅ Already based on latest main. No rebase needed."
+              fi
+              
+              echo ""
+              echo "=== Full commit history available ==="
+              echo "Last 20 commits:"
+              git log --oneline -20
+            else
+              echo "No targets were successfully processed — staying on default branch."
+            fi
+          fi
           
+          cd "$PARENT_DIR"
 
       - name: Copy and extract BLIS tarball if needed
         if: env.ZENTORCH_USE_LOCAL_BLIS == '1'
@@ -195,118 +496,242 @@ jobs:
 
       - name: Clone ZenDNN_tools
         run: |
-          git clone  --branch main https://${{ secrets.ZIAIE_PAT }}@github.com/AMD-Zenai/ZenDNN_tools.git "$PARENT_DIR/ZenDNN_tools"  
-      - name: Checkout PR tip commit
-        if: github.event_name == 'pull_request'
+          git clone --branch main https://${{ secrets.ZIAIE_PAT }}@github.com/AMD-Zenai/ZenDNN_tools.git "$PARENT_DIR/ZenDNN_tools"
+
+      - name: Checkout PR rebased on latest main
+        if: github.event_name == 'pull_request' && env.ZENTORCH_REF == ''
         working-directory: ${{ github.workspace }}
+        shell: bash
         run: |
-         echo " Checking out PR tip commit..."
-         echo "Current commit: $(git rev-parse HEAD)"
-         echo "PR HEAD SHA: ${{ github.event.pull_request.head.sha }}"
-         git checkout ${{ github.event.pull_request.head.sha }}
-         echo " Now on commit: $(git rev-parse HEAD)"
-         echo "PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
+          echo "=============================================="
+          echo "   REBASING PR ON LATEST MAIN"
+          echo "=============================================="
+          
+          # Configure git for rebase/merge operations
+          git config user.name "CI Bot"
+          git config user.email "ci-bot@amd.com"
+          
+          # Fetch latest main
+          echo "Fetching latest main branch..."
+          git fetch origin main:refs/remotes/origin/main
+          
+          # Get PR info
+          PR_BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          LATEST_MAIN=$(git rev-parse origin/main)
+          
+          echo "PR Base SHA (when PR was created): $PR_BASE_SHA"
+          echo "PR Head SHA (latest PR commit):    $PR_HEAD_SHA"
+          echo "Latest main SHA:                   $LATEST_MAIN"
+          
+          # Save original SHA for status reporting
+          echo "ORIGINAL_PR_SHA=$PR_HEAD_SHA" >> $GITHUB_ENV
+          
+          # Count commits in PR
+          PR_COMMIT_COUNT=$(git rev-list --count $PR_BASE_SHA..$PR_HEAD_SHA)
+          echo "Number of commits in PR: $PR_COMMIT_COUNT"
+          
+          # Show all PR commits before rebase
+          echo ""
+          echo "All commits in this PR:"
+          git log --oneline $PR_BASE_SHA..$PR_HEAD_SHA
+          
+          # Check if main has advanced
+          if [ "$PR_BASE_SHA" != "$LATEST_MAIN" ]; then
+            echo ""
+            echo "⚠️  Main branch has new commits since PR was created."
+            
+            # Show what's new in main
+            NEW_MAIN_COMMITS=$(git rev-list --count $PR_BASE_SHA..$LATEST_MAIN 2>/dev/null || echo "0")
+            echo "   New commits in main since PR base: $NEW_MAIN_COMMITS"
+            echo ""
+            echo "   Rebasing $PR_COMMIT_COUNT PR commits onto latest main..."
+            
+            # Checkout the PR HEAD
+            git checkout $PR_HEAD_SHA
+            
+            # Attempt rebase
+            if git rebase origin/main; then
+              echo ""
+              echo "✅ Rebase successful!"
+              echo "   New HEAD: $(git rev-parse HEAD)"
+              echo ""
+              echo "Rebased commits (last $PR_COMMIT_COUNT):"
+              git log --oneline -$PR_COMMIT_COUNT
+            else
+              echo ""
+              echo "⚠️ Rebase failed due to conflicts."
+              git rebase --abort
+              
+              echo "Attempting merge instead..."
+              git checkout $PR_HEAD_SHA
+              
+              if git merge origin/main -m "Merge latest main into PR for CI"; then
+                echo ""
+                echo "✅ Merge successful!"
+                echo "   New HEAD: $(git rev-parse HEAD)"
+              else
+                echo ""
+                echo "❌ Merge also failed due to conflicts."
+                echo "   Proceeding with original PR HEAD (not rebased)."
+                git merge --abort
+                git checkout $PR_HEAD_SHA
+              fi
+            fi
+          else
+            echo ""
+            echo "✅ PR is already based on latest main. No rebase needed."
+            git checkout $PR_HEAD_SHA
+          fi
+          
+          echo ""
+          echo "=============================================="
+          echo "Final state:"
+          echo "  Original PR HEAD: $PR_HEAD_SHA"
+          echo "  Current HEAD:     $(git rev-parse HEAD)"
+          echo "  PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
+          echo "=============================================="
+
+      - name: Verify all PR commits are present
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          echo "=============================================="
+          echo "   PR COMMITS VERIFICATION"
+          echo "=============================================="
+          echo ""
+          echo "Current HEAD: $(git rev-parse HEAD)"
+          echo "Total commits in repo: $(git rev-list --count HEAD)"
+          echo ""
+          echo "Last 20 commits in current history:"
+          git log --oneline -20
+          echo "=============================================="
+
+      - name: Verify full commit history
+        shell: bash
+        run: |
+          echo "=============================================="
+          echo "   COMMIT HISTORY VERIFICATION"
+          echo "=============================================="
+          
+          echo ""
+          echo "=== ZenDNN_PyTorch_Plugin ==="
+          cd "${GITHUB_WORKSPACE}"
+          echo "Total commits in repo: $(git rev-list --count HEAD)"
+          echo "Current HEAD: $(git rev-parse HEAD)"
+          echo "Last 10 commits:"
+          git log --oneline -10
+          
+          if [ -d "$PARENT_DIR/ZenDNN" ]; then
+            echo ""
+            echo "=== ZenDNN ==="
+            cd "$PARENT_DIR/ZenDNN"
+            echo "Total commits in repo: $(git rev-list --count HEAD)"
+            echo "Current HEAD: $(git rev-parse HEAD)"
+            echo "Last 10 commits:"
+            git log --oneline -10
+          fi
+          
+          echo ""
+          echo "=============================================="
+
       - name: PR INFO
         shell: bash
         run: |
-         echo "======================================"
-         echo " ZENDTORCH & ZENDNNL & ZENDNN_TOOLS INFO  "
-         echo "======================================"
+          echo "======================================"
+          echo " ZENDTORCH & ZENDNNL & ZENDNN_TOOLS INFO  "
+          echo "======================================"
 
-         git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
-         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
-          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          echo "=== PULL REQUEST INFO ==="
-         elif [ "${GITHUB_EVENT_NAME}" = "push" ]; then
-          BASE_BRANCH="main"
-          BASE_SHA="$(git rev-parse origin/main)"
-          SOURCE_BRANCH="${GITHUB_REF_NAME}"
-          HEAD_SHA="$(git rev-parse HEAD)"
-          echo "=== PUSH EVENT INFO ==="
-         else
-          BASE_BRANCH="main"
-          BASE_SHA="$(git rev-parse origin/main || echo 'N/A')"
-          SOURCE_BRANCH="${GITHUB_REF_NAME:-workflow_dispatch}"
-          HEAD_SHA="$(git rev-parse HEAD)"
-          echo "=== WORKFLOW DISPATCH INFO ==="
-         fi
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            echo "=== PULL REQUEST INFO ==="
+          elif [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            BASE_BRANCH="main"
+            BASE_SHA="$(git rev-parse origin/main)"
+            SOURCE_BRANCH="${GITHUB_REF_NAME}"
+            HEAD_SHA="$(git rev-parse HEAD)"
+            echo "=== PUSH EVENT INFO ==="
+          else
+            BASE_BRANCH="main"
+            BASE_SHA="$(git rev-parse origin/main || echo 'N/A')"
+            SOURCE_BRANCH="${GITHUB_REF_NAME:-workflow_dispatch}"
+            HEAD_SHA="$(git rev-parse HEAD)"
+            echo "=== WORKFLOW DISPATCH INFO ==="
+          fi
 
-         echo "PR BASE BRANCH   : $BASE_BRANCH"
-         echo "PR BASE SHA      : $BASE_SHA"
-         echo "PR SOURCE BRANCH : $SOURCE_BRANCH"
-         echo "PR HEAD SHA      : $HEAD_SHA"
-         echo ""
+          echo "PR BASE BRANCH   : $BASE_BRANCH"
+          echo "PR BASE SHA      : $BASE_SHA"
+          echo "PR SOURCE BRANCH : $SOURCE_BRANCH"
+          echo "PR HEAD SHA      : $HEAD_SHA"
+          echo "CURRENT HEAD     : $(git rev-parse HEAD)"
+          echo ""
 
-         echo "Fetching branches..."
-         git fetch --no-tags origin +refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH || true
-         git fetch --no-tags origin +refs/heads/$SOURCE_BRANCH:refs/remotes/origin/$SOURCE_BRANCH || true
-         echo ""
+          echo "Fetching branches..."
+          git fetch --no-tags origin +refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH || true
+          git fetch --no-tags origin +refs/heads/$SOURCE_BRANCH:refs/remotes/origin/$SOURCE_BRANCH || true
+          echo ""
 
-         echo "COMMITS BETWEEN BASE AND HEAD"
+          echo "COMMITS BETWEEN BASE AND HEAD"
           git log --oneline -20 || echo "No commits found"
-         echo ""
+          echo ""
+
           echo "=============================="
-         echo "   ZENDNN INFO"
-         echo "=============================="
-         if [ -d "$PARENT_DIR/ZenDNN" ]; then
-          cd "$PARENT_DIR/ZenDNN"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/AMD-Zenai/ZenDNN.git
-          git fetch --all --no-tags || true
+          echo "   ZENDNN INFO"
+          echo "=============================="
+          if [ -d "$PARENT_DIR/ZenDNN" ]; then
+            cd "$PARENT_DIR/ZenDNN"
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/AMD-Zenai/ZenDNN.git
+            git fetch --all --no-tags || true
 
-          BRANCH=${GITHUB_REF_NAME:-main}
-          HEAD_SHA=$(git rev-parse HEAD)
-          BASE_BRANCH="main"
-          BASE_SHA=$(git rev-parse origin/main || echo "N/A")
+            BRANCH=${GITHUB_REF_NAME:-main}
+            HEAD_SHA=$(git rev-parse HEAD)
+            BASE_BRANCH="main"
+            BASE_SHA=$(git rev-parse origin/main || echo "N/A")
 
-          echo "CURRENT BRANCH   : $BRANCH"
-          echo "HEAD SHA         : $HEAD_SHA"
-          echo "BASE BRANCH      : $BASE_BRANCH"
-          echo "BASE SHA         : $BASE_SHA"
-          echo ""
+            echo "CURRENT BRANCH   : $BRANCH"
+            echo "HEAD SHA         : $HEAD_SHA"
+            echo "BASE BRANCH      : $BASE_BRANCH"
+            echo "BASE SHA         : $BASE_SHA"
+            echo ""
 
-          echo "LAST 20 COMMITS (ZenDNN)"
-          git log --oneline -20 || echo "No commits found"
-         else
-         echo "ZenDNNL directory not found — skipping."
-         fi
+            echo "LAST 20 COMMITS (ZenDNN)"
+            git log --oneline -20 || echo "No commits found"
+          else
+            echo "ZenDNN directory not found — skipping."
+          fi
 
-         echo "=============================="
-         echo "   ZENDNN_TOOLS INFO"
-         echo "=============================="
-         if [ -d "$PARENT_DIR/ZenDNN_tools" ]; then
-          cd "$PARENT_DIR/ZenDNN_tools"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/AMD-Zenai/ZenDNN_tools.git
-          git fetch --all --no-tags || true
+          echo "=============================="
+          echo "   ZENDNN_TOOLS INFO"
+          echo "=============================="
+          if [ -d "$PARENT_DIR/ZenDNN_tools" ]; then
+            cd "$PARENT_DIR/ZenDNN_tools"
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/AMD-Zenai/ZenDNN_tools.git
+            git fetch --all --no-tags || true
 
-          BRANCH=${GITHUB_REF_NAME:-main}
-          HEAD_SHA=$(git rev-parse HEAD)
-          BASE_BRANCH="main"
-          BASE_SHA=$(git rev-parse origin/main || echo "N/A")
+            BRANCH=${GITHUB_REF_NAME:-main}
+            HEAD_SHA=$(git rev-parse HEAD)
+            BASE_BRANCH="main"
+            BASE_SHA=$(git rev-parse origin/main || echo "N/A")
 
-          echo "CURRENT BRANCH   : $BRANCH"
-          echo "HEAD SHA         : $HEAD_SHA"
-          echo "BASE BRANCH      : $BASE_BRANCH"
-          echo "BASE SHA         : $BASE_SHA"
-          echo ""
+            echo "CURRENT BRANCH   : $BRANCH"
+            echo "HEAD SHA         : $HEAD_SHA"
+            echo "BASE BRANCH      : $BASE_BRANCH"
+            echo "BASE SHA         : $BASE_SHA"
+            echo ""
 
-          echo "LAST 20 COMMITS (ZenDNN_tools)"
-          git log --oneline -20 || echo "No commits found"
-         else
-         echo "ZenDNN_tools directory not found — skipping."
-         fi
+            echo "LAST 20 COMMITS (ZenDNN_tools)"
+            git log --oneline -20 || echo "No commits found"
+          else
+            echo "ZenDNN_tools directory not found — skipping."
+          fi
       
       - name: Run CI script
         run: |
-          #sed -i 's/sudo//g' "$PARENT_DIR/ZenDNN_tools/scripts/ci/zendnn_ci_pt_plugin_presub_build.sh"
-          #sed -i '/mkmhub/ s/mkmhub/-v \/proj\/zendai:\/proj\/zendai -v \/home\/runner:\/home\/runner mkmhub/' "$PARENT_DIR/ZenDNN_tools/scripts/ci/zendnn_ci_pt_plugin_presub_build.sh"
-          #sed -i '/git config --global --add/ s/^/# /' "$PARENT_DIR/ZenDNN_tools/scripts/ci/zendnn_ci_pt_plugin_presub_build.sh"
-          #sed -i 's|torch-\$NATIVE_TORCH_VERSION|torch-\$NATIVE_TORCH_VERSION-xco|g' "$PARENT_DIR/ZenDNN_tools/scripts/ci/zendnn_ci_pt_plugin_presub_build.sh"
-          #sed -i 's/^\(conda init bash\|conda config --set auto_activate_base false\|source ~\/.bashrc\)/# \1/' "$PARENT_DIR/ZenDNN_tools/scripts/ci/zendnn_ci_PT_PLUGIN_build.sh"
-          #sed -i 's|/root/anaconda3/|/proj/zendai_conda/miniforge3/|g' "$PARENT_DIR/ZenDNN_tools/scripts/ci/zendnn_ci_PT_PLUGIN_build.sh"
           export PYTHON_VERSION=${{ env.PYTHON_VERSION }}
           export BUILD_PYTHON_VERSIONS=${{ env.PYTHON_VERSION }}
           export ZENTORCH_VERSION=${{ env.ZENTORCH_VERSION }}
@@ -317,9 +742,7 @@ jobs:
           export UNWANTED_KEYWORDS=${{ env.UNWANTED_KEYWORDS }}
           export BLIS_TAR_BALL=${{ env.BLIS_TAR_BALL }}
           export PARENT_DIR=${PARENT_DIR}
-          #git config --global --add safe.directory ${WORKSPACE}/ZenDNN_PyTorch_Plugin
-          #git config --global --add safe.directory ${WORKSPACE}/ZenDNN
-          #git config --global --add safe.directory ${WORKSPACE}/blis
+          
           echo "========= FILE: zendnn_ci_pt_plugin_presub_build.sh ========="
           cat "$PARENT_DIR/ZenDNN_tools/scripts/ci/zendnn_ci_pt_plugin_presub_build.sh"
           echo "============================================================="
@@ -344,30 +767,55 @@ jobs:
           rm -rf "$PARENT_DIR/*.txt"
           rm -rf "$PARENT_DIR/blis" "$PARENT_DIR/$BLIS_TAR_BALL"
           ls $PARENT_DIR
+
       - name: Report status back to ZenDNN repo
-        if: always()
+        if: always() && github.event_name == 'repository_dispatch'
         run: |
-         state="success"
-         if [ "${{ job.status }}" != "success" ]; then
-          state="failure"
-         fi
-         curl -s -X POST \
-         -H "Accept: application/vnd.github.v3+json" \
-         -H "Authorization: token ${{ secrets.ZIAIE_PAT }}" \
-          "https://api.github.com/repos/AMD-Zenai/ZenDNN/statuses/${{ github.event.client_payload.zendnnl_ref_sha }}" \
-          -d "{\"state\":\"${state}\",\"context\":\"${{ github.repository }} CI\",\"description\":\"${{ github.repository }} ${state}\"}"
+          state="success"
+          if [ "${{ job.status }}" != "success" ]; then
+            state="failure"
+          fi
+          
+          # Use original SHA for status reporting (before rebase)
+          REPORT_SHA="${{ github.event.client_payload.zendnnl_ref_sha }}"
+          if [ -n "${ORIGINAL_ZENDNN_SHA:-}" ]; then
+            REPORT_SHA="${ORIGINAL_ZENDNN_SHA}"
+          fi
+          
+          if [ -n "$REPORT_SHA" ]; then
+            echo "Reporting status to ZenDNN commit: $REPORT_SHA"
+            curl -s -X POST \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: token ${{ secrets.ZIAIE_PAT }}" \
+              "https://api.github.com/repos/AMD-Zenai/ZenDNN/statuses/$REPORT_SHA" \
+              -d "{\"state\":\"${state}\",\"context\":\"${{ github.repository }} CI\",\"description\":\"${{ github.repository }} ${state}\"}"
+          else
+            echo "No ZenDNN SHA to report status to"
+          fi
+        shell: bash
+
       - name: Report status back to ZenDNNTOOLS repo
-        if: always()
+        if: always() && github.event_name == 'repository_dispatch'
         run: |
-         state="success"
-         if [ "${{ job.status }}" != "success" ]; then
-          state="failure"
-         fi
-         curl -s -X POST \
-         -H "Accept: application/vnd.github.v3+json" \
-         -H "Authorization: token ${{ secrets.ZIAIE_PAT }}" \
-          "https://api.github.com/repos/AMD-Zenai/ZenDNN_tools/statuses/${{ github.event.client_payload.zendnntools_ref_sha }}" \
-          -d "{\"state\":\"${state}\",\"context\":\"${{ github.repository }} CI\",\"description\":\"${{ github.repository }} ${state}\"}"
+          state="success"
+          if [ "${{ job.status }}" != "success" ]; then
+            state="failure"
+          fi
+          
+          REPORT_SHA="${{ github.event.client_payload.zendnntools_ref_sha }}"
+          
+          if [ -n "$REPORT_SHA" ]; then
+            echo "Reporting status to ZenDNN_tools commit: $REPORT_SHA"
+            curl -s -X POST \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: token ${{ secrets.ZIAIE_PAT }}" \
+              "https://api.github.com/repos/AMD-Zenai/ZenDNN_tools/statuses/$REPORT_SHA" \
+              -d "{\"state\":\"${state}\",\"context\":\"${{ github.repository }} CI\",\"description\":\"${{ github.repository }} ${state}\"}"
+          else
+            echo "No ZenDNN_tools SHA to report status to"
+          fi
+        shell: bash
+
       - name: Report status back for workflow_dispatch commits
         if: always() && github.event_name == 'workflow_dispatch'
         run: |
@@ -382,11 +830,17 @@ jobs:
 
           # Report to ZenDNN-Zennnl repo if zendnnl_ref commit SHA was provided
           if [ -n "${{ github.event.inputs.zendnnl_ref }}" ]; then
-            echo "Reporting $state to ZenDNNL commit ${{ github.event.inputs.zendnnl_ref }}"
+            # Use original SHA for status reporting
+            REPORT_SHA="${{ github.event.inputs.zendnnl_ref }}"
+            if [ -n "${ORIGINAL_ZENDNN_SHA:-}" ]; then
+              REPORT_SHA="${ORIGINAL_ZENDNN_SHA}"
+            fi
+            
+            echo "Reporting $state to ZenDNNL commit $REPORT_SHA"
             curl -s -X POST \
               -H "Accept: application/vnd.github.v3+json" \
               -H "Authorization: token ${{ secrets.ZIAIE_PAT }}" \
-              "https://api.github.com/repos/AMD-Zenai/ZenDNN/statuses/${{ github.event.inputs.zendnnl_ref }}" \
+              "https://api.github.com/repos/AMD-Zenai/ZenDNN/statuses/$REPORT_SHA" \
               -d "{\"state\":\"${state}\",\"context\":\"ZenDNN_PyTorch_Plugin CI\",\"description\":\"ZenDNN_PyTorch_Plugin run ${state}\"}"
           else
             echo "Skipping ZenDNNL status update (no commit SHA provided)"
@@ -394,17 +848,19 @@ jobs:
 
           # Report to ZenDNN_PyTorch_Plugin repo if zendnnTorch_ref commit SHA was provided
           if [ -n "${{ github.event.inputs.zendnnTorch_ref }}" ]; then
-            echo "Reporting $state to ZenDNN_PyTorch_Plugin commit ${{ github.event.inputs.zendnnTorch_ref }}"
+            # Use original SHA for status reporting
+            REPORT_SHA="${{ github.event.inputs.zendnnTorch_ref }}"
+            if [ -n "${ORIGINAL_ZENTORCH_SHA:-}" ]; then
+              REPORT_SHA="${ORIGINAL_ZENTORCH_SHA}"
+            fi
+            
+            echo "Reporting $state to ZenDNN_PyTorch_Plugin commit $REPORT_SHA"
             curl -s -X POST \
               -H "Accept: application/vnd.github.v3+json" \
               -H "Authorization: token ${{ secrets.ZIAIE_PAT }}" \
-              "https://api.github.com/repos/AMD-Zenai/ZenDNN_PyTorch_Plugin/statuses/${{ github.event.inputs.zendnnTorch_ref }}" \
+              "https://api.github.com/repos/AMD-Zenai/ZenDNN_PyTorch_Plugin/statuses/$REPORT_SHA" \
               -d "{\"state\":\"${state}\",\"context\":\"ZenDNN_PyTorch_Plugin CI\",\"description\":\"ZenDNN_PyTorch_Plugin run ${state}\"}"
           else
             echo "Skipping ZenDNN_PyTorch_Plugin status update (no commit SHA provided)"
           fi
-
-
-
-
-          
+        shell: bash
