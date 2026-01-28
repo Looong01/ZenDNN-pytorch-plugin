@@ -607,7 +607,7 @@ inline void zendnnl_direct_kernel(
     const at::Tensor &result, const float &alpha,
     const std::vector<int64_t> &post_op_ids,
     const std::vector<at::Tensor> &post_op_buffers, const bool is_weight_const,
-    const bool is_weight_prepacked,
+    const bool is_weight_prepacked, const std::string &zentorch_op_name,
     std::optional<std::reference_wrapper<
         zendnnl::lowoha::matmul::matmul_quantization_params_t>>
         quantization_params = std::nullopt) {
@@ -726,6 +726,8 @@ inline void zendnnl_direct_kernel(
   zendnnl::lowoha::matmul::matmul_batch_params_t batch_params;
   batch_params.Batch_A = batch_A;
   batch_params.Batch_B = batch_B;
+
+  params.plugin_op = zentorch_op_name;
 
   zendnnl::lowoha::matmul::matmul_direct(
       'r' /* layout: row-major */, transA, transB, M, N, K, alpha, input_ptr,

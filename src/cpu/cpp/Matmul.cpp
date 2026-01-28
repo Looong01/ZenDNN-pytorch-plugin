@@ -55,8 +55,8 @@ at::Tensor zendnnl_matmul_impl(
   if (use_zendnnl_direct_kernel) {
     LOG(INFO) << "Using zendnn direct kernel for matmul";
     zendnnl_direct_kernel(input, weight, beta_bias, result, alpha, post_op_ids,
-                          post_op_buffers, is_weight_const,
-                          is_weight_prepacked);
+                          post_op_buffers, is_weight_const, is_weight_prepacked,
+                          zentorch_op_name);
     return result;
   }
 

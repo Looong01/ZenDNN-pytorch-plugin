@@ -205,10 +205,10 @@ void zendnnl_quantized_matmul_impl(
       quantization_params.dst_zp.dims = output_zero_points_t.sizes().vec();
     }
 
-    zendnnl_direct_kernel(is_input_quantized ? input : q_input, weight, bias_t,
-                          result, 1.0f, post_op_ids, post_op_buffers,
-                          true /* is_weight_const */,
-                          false /* is_weight_prepacked */, quantization_params);
+    zendnnl_direct_kernel(
+        is_input_quantized ? input : q_input, weight, bias_t, result, 1.0f,
+        post_op_ids, post_op_buffers, true /* is_weight_const */,
+        false /* is_weight_prepacked */, zentorch_op_name, quantization_params);
 
     return;
   }
