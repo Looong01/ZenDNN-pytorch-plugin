@@ -30,7 +30,7 @@ The plugin uses vLLM's platform and general plugin entry points to:
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| vLLM | 0.11.0 - 0.14.0 | Profiler fixes applied per version |
+| vLLM | 0.11.0 - 0.14.1 | Profiler fixes applied per version |
 | Python | 3.10+ | |
 | PyTorch | 2.8/2.9.1+ | Auto-installed by vLLM |
 
@@ -98,8 +98,8 @@ This kernel leverages AMD EPYC specific intrinsics and optimizations to accelera
 
 2. **Build vLLM from Source**
    - Follow the official [vLLM Installation Guide](https://docs.vllm.ai/en/stable/getting_started/installation/cpu.html) for detailed, step-by-step instructions.
-   - **Important:** Pre-built vLLM CPU binaries are not available. You must build vLLM from source to enable CPU support.
-   - Supported versions: 0.11.x, 0.12.0, 0.13.0, 0.14.0. Check out the appropriate release tag before building.
+   - **Important:** Pre-built vLLM CPU binaries are available from 0.13.0. You must build vLLM from source to enable CPU support for previous supported versions.
+   - Supported versions: 0.11.x, 0.12.0, 0.13.0, 0.14.0, 0.14.1. Check out the appropriate release tag before building.
 
 3. **Install zentorch:**
    Refer to the [zentorch Installation Guide](https://github.com/amd/ZenDNN-pytorch-plugin?tab=readme-ov-file#2-installation) for detailed instructions.
@@ -178,7 +178,7 @@ vllm bench throughput \
 
 If you don't see "Platform plugin zentorch is activated":
 1. Verify zentorch is installed: `python -c "import zentorch"`
-2. Check vLLM version: `python -c "import vllm; print(vllm.__version__)"` (must be 0.11.0 - 0.14.0)
+2. Check vLLM version: `python -c "import vllm; print(vllm.__version__)"` (must be 0.11.0 - 0.14.1)
 
 ### Stale Compilation Cache
 

@@ -7,12 +7,12 @@
 
 Supports:
 - 0.11.x: CompilationLevel, _Backend, PagedAttention patching
-- 0.12.0/0.13.0/0.14.0: CompilationMode, AttentionBackendEnum, native CPU attention
+- 0.12.0/0.13.0/0.14.0/0.14.1: CompilationMode, AttentionBackendEnum, native CPU attention
 """
 
 from typing import TYPE_CHECKING
 
-from zentorch.vllm.core import is_v11, is_v13, is_v14
+from zentorch.vllm.core import is_v11, is_v13, is_v14, is_v14_1
 
 if TYPE_CHECKING:
     from vllm.config import VllmConfig
@@ -127,7 +127,7 @@ def _create_platform():
             """
             if is_v11():
                 cls._patch_profiler_v11()
-            elif is_v13() or is_v14():
+            elif is_v13() or is_v14() or is_v14_1():
                 cls._patch_profiler_v13_v14()
             # 0.12 is handled via _apply_profiler_patch_v12() in __init__.py register()
 

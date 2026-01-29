@@ -28,6 +28,7 @@ _VERSION_MAP = {
     "0.12.0": "v12",
     "0.13.0": "v13",
     "0.14.0": "v14",
+    "0.14.1": "v14_1",
 }
 
 
@@ -80,6 +81,9 @@ def is_v14() -> bool:
     return get_version_family() == "v14"
 
 
+def is_v14_1() -> bool:
+    return get_version_family() == "v14_1"
+
 # ---------------------------------------------------------------------------
 # Version decorators
 # ---------------------------------------------------------------------------
@@ -123,7 +127,7 @@ def vllm_version_range(
     """Decorator: apply patch for a version range.
 
     Usage:
-        @vllm_version_range(min_ver="0.11.0", max_ver="0.14.0")
+        @vllm_version_range(min_ver="0.11.0", max_ver="0.14.1")
         class MyPatch:
             pass
     """

@@ -7,13 +7,13 @@
 Unit tests for zentorch.vllm plugin.
 
 Tests verify:
-- Version compatibility checks for supported versions (0.11.x, 0.12.0, 0.13.0, 0.14.0)
+- Version compatibility checks for supported versions (0.11.x, 0.12.0, 0.13.0, 0.14.0, 0.14.1)
 - Version parsing logic
 - Patch registration and application
 - Individual patch functionality (oneDNN disable, CompilationConfig repr, etc.)
 - Platform configuration
 
-Supported vLLM versions: 0.11.0, 0.11.1, 0.11.2, 0.12.0, 0.13.0, 0.14.0
+Supported vLLM versions: 0.11.0, 0.11.1, 0.11.2, 0.12.0, 0.13.0, 0.14.0, 0.14.1
 """
 
 import sys
@@ -54,7 +54,7 @@ class TestVersionParsing(unittest.TestCase):
         """VERSION_MAP should contain all supported base versions."""
         from zentorch.vllm.core import _VERSION_MAP
 
-        expected_versions = ["0.11.0", "0.11.1", "0.11.2", "0.12.0", "0.13.0", "0.14.0"]
+        expected_versions = ["0.11.0", "0.11.1", "0.11.2", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]
         for ver in expected_versions:
             self.assertIn(ver, _VERSION_MAP, f"{ver} should be in VERSION_MAP")
 
@@ -83,6 +83,10 @@ class TestVersionParsing(unittest.TestCase):
         # v14 family
         self.assertEqual(_VERSION_MAP.get(_base_version("0.14.0")), "v14")
         self.assertEqual(_VERSION_MAP.get(_base_version("0.14.0rc1+cpu")), "v14")
+
+        # v14_1 family
+        self.assertEqual(_VERSION_MAP.get(_base_version("0.14.1")), "v14_1")
+        self.assertEqual(_VERSION_MAP.get(_base_version("0.14.1rc1+cpu")), "v14_1")
 
     def test_version_family_detection_unsupported(self):
         """VERSION_MAP should return None for unsupported versions."""
@@ -172,7 +176,7 @@ class TestPatchRegistration(unittest.TestCase):
         register()
         family = get_version_family()
 
-        # These patches apply to all versions (0.11.x, 0.12.0, 0.13.0, 0.14.0)
+        # These patches apply to all versions (0.11.x, 0.12.0, 0.13.0, 0.14.0, 0.14.1)
         universal_patches = ["CompilationConfigRepr", "OneDNNDisable"]
         for patch_name in universal_patches:
             self.assertIn(
