@@ -97,8 +97,8 @@ This kernel leverages AMD EPYC specific intrinsics and optimizations to accelera
    ```
 
 2. **Build vLLM from Source**
-   - Follow the official [vLLM Installation Guide](https://docs.vllm.ai/en/stable/getting_started/installation/cpu.html) for detailed, step-by-step instructions.
-   - **Important:** Pre-built vLLM CPU binaries are available from 0.13.0. You must build vLLM from source to enable CPU support for previous supported versions.
+   - Follow the official [vLLM Installation Guide](https://docs.vllm.ai/en/stable/getting_started/installation/cpu/#build-wheel-from-source) for detailed, step-by-step instructions.
+   - **Important:** Pre-built vLLM CPU binaries are available from [0.13.0](https://docs.vllm.ai/en/stable/getting_started/installation/cpu/#pre-built-wheels). You must build vLLM from source to enable CPU support for previous supported versions.
    - Supported versions: 0.11.x, 0.12.0, 0.13.0, 0.14.0, 0.14.1. Check out the appropriate release tag before building.
 
 3. **Install zentorch:**
