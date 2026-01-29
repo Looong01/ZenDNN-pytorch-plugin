@@ -500,7 +500,7 @@ TORCH_LIBRARY(zentorch, m) {
         "zentorch_op_name='zentorch::zentorch_mm_tanh') -> Tensor");
   m.def("zentorch_bmm(Tensor self, Tensor mat2, str "
         "zentorch_op_name='zentorch::zentorch_bmm') -> Tensor",
-        {at::Tag::needs_fixed_stride_order});
+        {at::Tag::needs_contiguous_strides});
   m.def(
       "zentorch_addmm(Tensor self, Tensor mat1, Tensor mat2, *, Scalar beta=1, "
       "Scalar alpha=1, str zentorch_op_name='zentorch::zentorch_addmm') "
