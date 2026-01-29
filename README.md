@@ -44,6 +44,7 @@ __The latest stable ZenDNN Plugin for PyTorch* (zentorch) [5.1](https://github.c
 
 
 __The main branch contains pre-release zentorch 5.2 plugin.__
+
 zentorch 5.2 pre-release plugin is the PyTorch plugin which comes with ZenDNN 5.2 pre-release.
 This upgrade continues the focus on optimizing inference with Recommender Systems and Large Language Models on AMD EPYC™ CPUs. It includes AMD EPYC™ enhancements for bfloat16 performance, expanded support for cutting-edge models like Llama 3.1 and 3.2, Microsoft Phi, and more as well as support for INT4 quantized datatype.
 This includes the advanced Activation-Aware Weight Quantization (AWQ) algorithm for LLMs and quantized support for the DLRM-v2 model with int8 weights.
@@ -54,9 +55,9 @@ They also incorporate optimized embedding bag kernels and enhanced zenMatMul mat
 
 Combined with PyTorch's torch.compile, zentorch transforms deep learning pipelines into finely-tuned, AMD-specific engines, delivering unparalleled efficiency and speed for large-scale inference workloads
 
-The zentorch 5.2 pre-release plugin seamlessly works with PyTorch versions including 2.10 and 2.9.1, offering a high-performance experience for deep learning on AMD EPYC™ platforms.
+The zentorch 5.2 pre-release plugin seamlessly works with PyTorch versions including 2.10.0 and 2.9.1, offering a high-performance experience for deep learning on AMD EPYC™ platforms.
 
-**Note:** We recommend using Torch 2.9.1 or higher as there is a known [issue](https://github.com/pytorch/pytorch/pull/166338) with Torch 2.9.0 that leads to longer compilation time with zentorch backend. The issue has been fixed in later versions.
+>**Note:** We recommend using Torch 2.9.1 or higher as there is a known [issue](https://github.com/pytorch/pytorch/pull/166338) with Torch 2.9.0 that leads to longer compilation time with zentorch backend. The issue has been fixed in later versions.
 
 ## Support
 
@@ -140,12 +141,9 @@ unzip ZENTORCH_v5.1.0_Python_v3.10.zip
 cd ZENTORCH_v5.1.0_Python_v3.10/
 pip install zentorch-5.1.0-cp310-cp310-manylinux_2_28_x86_64.whl
 ```
->Notes:
-* Zentorch inherits its Python version compatibility from PyTorch. For torch 2.10, zentorch supports Python 3.10 to 3.13 and for torch 2.9, zentorch supports Python 3.10 to 3.13. For other versions, please refer to the [PyTorch Release Compatibility Matrix](https://github.com/pytorch/pytorch/blob/main/RELEASE.md#release-compatibility-matrix). Please note that Python 3.13T and Python 3.14 are not supported in zentorch.
-This README uses Python 3.10.
-* Dependent packages 'numpy' and 'torch' will be installed by '_zentorch_' if not already present.
-* If you get the error: ImportError: /lib64/libstdc++.so.6: version `GLIBCXX_.a.b.cc' not found (required by <path_to_conda>/envs/<env_name>/lib/python<py_version>/site-packages/zentorch-5.2.0-pyx.y-linux-x86_64.egg/zentorch/_C.cpython-xy-x86_64-linux-gnu.so), export LD_PRELOAD as:
-  * export LD_PRELOAD=<path_to_conda>/envs/<env_name>/lib/libstdc++.so.6:$LD_PRELOAD
+>**Notes:**
+>* Dependent packages 'numpy' and 'torch' will be installed by '_zentorch_' if not already present.
+>* If you get the error: ImportError: /lib64/libstdc++.so.6: version `GLIBCXX_.a.b.cc' not found (required by <path_to_conda>/envs/<env_name>/lib/python<py_version>/site-packages/zentorch-5.2.0-pyx.y-linux-x86_64.egg/zentorch/_C.cpython-xy-x86_64-linux-gnu.so), export LD_PRELOAD as: export LD_PRELOAD=<path_to_conda>/envs/<env_name>/lib/libstdc++.so.6:$LD_PRELOAD
 
 ## 2.2. From Source
 Run the following commands:
@@ -153,11 +151,10 @@ Run the following commands:
 git clone https://github.com/amd/ZenDNN-pytorch-plugin.git
 cd ZenDNN-pytorch-plugin
 ```
->Note: The repository defaults to the master branch.
-
->Note: Build from the master branch generates zentorch 5.2 pre-release plugin.
-
->Note: ```export ZENDNNL_MANYLINUX_BUILD=1``` is needed for build from source for RHEL/FEDORA/Almalinux/CentOS OS families
+>**Notes:**
+>* The repository defaults to the master branch.
+>* Build from the master branch generates zentorch 5.2 pre-release plugin.
+>* ```export ZENDNNL_MANYLINUX_BUILD=1``` is needed for build from source for RHEL/FEDORA/Almalinux/CentOS OS families
 
 ### 2.2.1. Preparing third party repositories
 
@@ -175,11 +172,11 @@ conda activate pt-zentorch
 # Pip command
 pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
 ```
-
->Note: The CPU version of torch/pytorch only supports CPU version of torchvision.
->Note: For torch 2.9.1, zentorch supports Python 3.10 to 3.13.
->Note: For torch 2.10, zentorch supports Python 3.10 to 3.13.
->Note: cmake & ninja are required for cpp extension builds, will be installed through build script.
+>**Notes:**
+>* This README uses Python 3.10.
+>* Zentorch follows PyTorch’s Python version compatibility. For PyTorch 2.10.0, Zentorch supports Python versions 3.10 through 3.13, and the same range applies to PyTorch 2.9.1. For other PyTorch releases, refer to the PyTorch Release Compatibility Matrix
+.
+>* Zentorch does not support Python 3.13T or Python 3.14. 
 
 #### 2.2.2.3. Install Dependencies
 ```bash
@@ -189,14 +186,14 @@ pip install -r requirements.txt
 ```bash
 python setup.py bdist_wheel
 ```
->Note: The wheel file will be generated in dist folder in ZenDNN-pytorch-plugin directory
+>**Note:** The wheel file will be generated in dist folder in ZenDNN-pytorch-plugin directory
 
 #### 2.2.2.5. To install the wheel file of _zentorch_
 ```bash
 cd dist
 pip install zentorch-5.2.0-cp310-cp310-linux_x86_64.whl
 ```
->Note: If you build from the main branch, the generated wheel file will instead be named:
+>**Note:** If you build from the main branch, the generated wheel file will be named:
 zentorch-5.2.0-cp310-cp310-linux_x86_64.whl
 #### 2.2.2.6. Build Cleanup
 ```bash
@@ -208,7 +205,7 @@ python setup.py clean --all
 ```python
 python test/install_requirements.py
 ```
->Note: Before running any unit tests, export the following environment variables to disable ZenDNN caching:
+>**Note:** Before running any unit tests, export the following environment variables to disable ZenDNN caching:
 ```bash
 export ZENDNNL_MATMUL_WEIGHT_CACHE=0
 export ZENDNNL_ZP_COMP_CACHE=0
@@ -251,9 +248,9 @@ compiled_model = torch.compile(model, backend='zentorch')
 with torch.no_grad(), zentorch.freezing_enabled():
     output = compiled_model(input)
 ```
->Note: zentorch.freezing_enabled() is deprecated and will be removed in next release. Please use ```export TORCHINDUCTOR_FREEZING=1``` to enable freezing path for zentorch.
-
->Note: _zentorch_ is able to do the zentorch op replacements in both non-inference and inference modes. But some of the _zentorch_ optimizations are only supported for the inference mode, so it is recommended to use `torch.no_grad()` if you are running the model for inference only.
+>**Notes:** 
+>* zentorch.freezing_enabled() is deprecated and will be removed in next release. Please use ```export TORCHINDUCTOR_FREEZING=1``` to enable freezing path for zentorch.
+>*  _zentorch_ is able to do the zentorch op replacements in both non-inference and inference modes. But some of the _zentorch_ optimizations are only supported for the inference mode, so it is recommended to use `torch.no_grad()` if you are running the model for inference only.
 
 ## 4.2 CNN Models
 For CNN models, set `dynamic=False` when calling for `torch.compile` as below:
@@ -272,7 +269,7 @@ with torch.no_grad():
 ```
 ## 4.4 HuggingFace Generative LLM models
 
-**Note:** The `zentorch.llm.optimize` API has been deprecated. You can run generative models using `torch.compile(model, backend="zentorch")`, but for optimal performance we recommend using vLLM. Please refer to [section 4.5 vLLM Zentorch Plugin](#45-vllm-zentorch-plugin) for more details.
+>**Note:** The `zentorch.llm.optimize` API has been deprecated. You can run generative models using `torch.compile(model, backend="zentorch")`, but for optimal performance we recommend using vLLM. Please refer to [section 4.5 vLLM Zentorch Plugin](#45-vllm-zentorch-plugin) for more details.
 
 ## 4.5 vLLM Zentorch Plugin
 
@@ -300,9 +297,9 @@ export TORCH_CPP_LOG_LEVEL=INFO
 export ZENTORCH_PY_LOG_LEVEL=DEBUG
 ```
 The default level of logs is **WARNING** for both cpp and python sources but can be overridden as discussed above.
->NOTE: The log levels are the same as those provided by the python logging module.
+>**Note:** The log levels are the same as those provided by the python logging module.
 
->INFO: Since all OPs implemented in _zentorch_ are registered with torch using the TORCH_LIBRARY(), TORCH_LIBRARY_FRAGMENT() and TORCH_LIBRARY_IMPL() macros in bindings, the PyTorch profiler can be used without any modifications to measure the op level performance.
+>**Info:** Since all OPs implemented in _zentorch_ are registered with torch using the TORCH_LIBRARY(), TORCH_LIBRARY_FRAGMENT() and TORCH_LIBRARY_IMPL() macros in bindings, the PyTorch profiler can be used without any modifications to measure the op level performance.
 
 ## 5.3 Support for `TORCH_COMPILE_DEBUG`
 PyTorch offers a debugging toolbox that comprises a built-in stats and trace function. This functionality facilitates the display of the time spent by each compilation phase, output code, output graph visualization, and IR dump. `TORCH_COMPILE_DEBUG` invokes this debugging tool that allows for better problem-solving while troubleshooting the internal issues of TorchDynamo and TorchInductor. This functionality works for the models optimized using _zentorch_, so it can be leveraged to debug these models as well. To enable this functionality, users can either set the environment variable `TORCH_COMPILE_DEBUG=1` or specify the environment variable with the runnable file (e.g., test.py) as input.

@@ -11,9 +11,9 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 # Function to display help information
 display_help(){
     echo "Usage: Activate your working conda environment other than base"
-    echo "Usage: source $script_path/$script_name --framework zentorch/ipex --model llm/recsys/cnn/nlp --threads num_threads --precision bf16/fp32/woq/bf16_amp/int8"
+    echo "Usage: source $script_path/$script_name --framework zentorch --model llm/recsys/cnn/nlp --threads num_threads --precision bf16/fp32/woq/bf16_amp/int8"
     echo "Options:"
-    echo " --framework, -f            Specify the framework ['zentorch', 'ipex'] (if not specified this option, by default set to zentorch)"
+    echo " --framework, -f            Specify the framework ['zentorch]"
     echo " --model, -m                Specify the model ['llm', 'recsys', 'cnn', 'nlp'] (if not specified this option, by default set to llm)"
     echo " --threads, -t              Specify the num of threads. (if not specified this option, by default set to number of CPUs available on your system.)"
     echo " --precision, -p            Specify the precision ['bf16_amp', 'bf16','fp32','woq','int8'] (if not specified this option, by default set to bf16)"
@@ -64,8 +64,8 @@ framework=${framework:-zentorch}
 framework=$(echo "$framework" | tr '[:upper:]' '[:lower:]')
 
 # Validate the input for framework
-if [ "$framework" != "zentorch" ] && [ "$framework" != "ipex" ]; then
-    echo "Invalid framework. Please choose either 'zentorch' or 'ipex'."
+if [ "$framework" != "zentorch" ]; then
+    echo "Invalid framework. Please choose 'zentorch'."
     display_help
     return
 fi
@@ -242,8 +242,6 @@ if [ "$framework" = "zentorch" ]; then
     fi
 
     echo "ZENDNNL_MATMUL_ALGO = $ZENDNNL_MATMUL_ALGO"
-    export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
-    echo "ZENDNN_PRIMITIVE_CACHE_CAPACITY = $ZENDNN_PRIMITIVE_CACHE_CAPACITY"
 
     if [ -f "$extracted_path/$condavar/pkgs/$package_name-$package_version-$package_build/lib/libiomp5.so" ]; then
         export LD_PRELOAD="$extracted_path/$condavar/pkgs/$package_name-$package_version-$package_build/lib/libiomp5.so:$LD_PRELOAD"
@@ -262,24 +260,6 @@ if [ "$framework" = "zentorch" ]; then
         fi
     fi
 
-# for ipex framework
 else
-    export ONEDNN_PRIMITIVE_CACHE_CAPACITY=1024
-    echo "ONEDNN_PRIMITIVE_CACHE_CAPACITY = $ONEDNN_PRIMITIVE_CACHE_CAPACITY"
-
-    if [ -f "$extracted_path/$condavar/envs/$CONDA_DEFAULT_ENV/lib/libiomp5.so" ]; then
-        export LD_PRELOAD="$extracted_path/$condavar/envs/$CONDA_DEFAULT_ENV/lib/libiomp5.so:$LD_PRELOAD"
-        echo "LD_PRELOAD=$LD_PRELOAD"
-    else
-        pip install intel-openmp
-        if pip show intel-openmp > /dev/null 2>&1; then
-            echo "Installation Successful of libiomp5.so for framework '$framework' and model '$model'"
-            export LD_PRELOAD="$extracted_path/$condavar/envs/$CONDA_DEFAULT_ENV/lib/libiomp5.so:$LD_PRELOAD"
-            echo "LD_PRELOAD=$LD_PRELOAD"
-        else
-            echo "Installation Unsuccessful of libiomp5.so for framework '$framework' and model '$model'"
-            echo "Please explicitly install libiomp5.so for framework '$framework' and model '$model' in your conda environment"
-            echo "export LD_PRELOAD=\"$extracted_path/$condavar/envs/$CONDA_DEFAULT_ENV/lib/libiomp5.so:$LD_PRELOAD\""
-        fi
-    fi
+    echo "Invalid framework. Please choose 'zentorch'."
 fi

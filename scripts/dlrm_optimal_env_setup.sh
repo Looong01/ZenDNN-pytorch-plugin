@@ -112,29 +112,23 @@ echo "Extracted path to $condavar is $extracted_path/$condavar"
 
 # Below flags should be enabled irrespective of LOA / Primitive Op settings
 export TORCHINDUCTOR_FREEZING=1
-export ZENTORCH_LINEAR=1
 
-# LOA settings
-export USE_ZENDNN_MATMUL_DIRECT=1
+    # LOA settings
+    export USE_ZENDNN_MATMUL_DIRECT=1
 
-# Primitive Op settings
-export USE_ZENDNN_MATMUL_DIRECT=0
+    # Primitive Op settings
+    export USE_ZENDNN_MATMUL_DIRECT=0
 
 if [ "$precision" = "fp32" ]; then
    export ZENDNNL_MATMUL_ALGO=1
-   export ZENDNN_EB_THREAD_TYPE=1
 elif [ "$precision" = "bf16" ]; then
    export ZENDNNL_MATMUL_ALGO=1
-   export ZENDNN_EB_THREAD_TYPE=1
 elif [ "$precision" = "int8" ]; then
    export ZENDNNL_MATMUL_ALGO=1
-   export ZENDNN_EB_THREAD_TYPE=2
 elif [ "$precision" = "default" ]; then
    export ZENDNNL_MATMUL_ALGO=1
-   export ZENDNN_EB_THREAD_TYPE=2
 fi
 
 
 
-echo "ZENDNN_EB_THREAD_TYPE = $ZENDNN_EB_THREAD_TYPE"
 echo "ZENDNNL_MATMUL_ALGO = $ZENDNNL_MATMUL_ALGO"
