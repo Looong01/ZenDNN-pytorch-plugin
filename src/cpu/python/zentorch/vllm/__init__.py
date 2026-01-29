@@ -24,6 +24,7 @@ from __future__ import annotations
 import os
 import sys
 from typing import Optional
+import torch
 
 from zentorch._logging import get_logger
 from zentorch.vllm.core import (
@@ -33,6 +34,7 @@ from zentorch.vllm.core import (
     get_version_family,
     is_v12,
 )
+
 
 logger = get_logger(__name__)
 
@@ -160,6 +162,39 @@ class OneDNNDisablePatch:
             logger.info("[zentorch] Disabled oneDNN GEMM")
             return True
         except ImportError:
+            return False
+
+
+@vllm_version_range(min_ver="0.12.0", max_ver="0.14.0")
+class DispatchCPUUnquantizedGemmPatch:
+    """Fix Freezing issue by overwriting dispatch_cpu_unquantized_gemm."""
+
+    @classmethod
+    def apply(cls) -> bool:
+        def patched_dispatch_cpu_unquantized_gemm(
+            layer: torch.nn.Module,
+            remove_weight: bool,
+        ) -> None:
+            weights_copy = layer.weight.detach()
+            layer.cpu_linear = (
+                lambda x, weight, bias: torch.ops.zentorch.zentorch_linear_unary(
+                    x, weights_copy, bias, is_weight_prepacked=False
+                )
+            )
+            if remove_weight:
+                layer.weight = torch.nn.Parameter(torch.empty(0), requires_grad=False)
+            return
+
+        try:
+            from vllm.model_executor.layers import utils
+
+            utils.dispatch_cpu_unquantized_gemm = patched_dispatch_cpu_unquantized_gemm
+            logger.info(
+                "[zentorch] Successfully overwritten dispatch_cpu_unquantized_gemm"
+            )
+            return True
+        except ImportError:
+            logger.debug("[zentorch] Failed to overwrite dispatch_cpu_unquantized_gemm")
             return False
 
 
@@ -401,6 +436,7 @@ def _register_patches():
     manager.register("IPEXFlashAttention", IPEXFlashAttentionPatch)
     manager.register("CompilationConfigRepr", CompilationConfigReprPatch)
     manager.register("OneDNNDisable", OneDNNDisablePatch)
+    manager.register("DispatchCPUUnquantizedGemm", DispatchCPUUnquantizedGemmPatch)
     manager.register("InternVLDtype", InternVLDtypePatch)
     manager.register("CPUProfiler", CPUProfilerPatch)
     manager.register("CPUProfilerV12", CPUProfilerPatchV12)

@@ -122,7 +122,7 @@ No code changes are required. Once installed, simply run your vLLM inference wor
 ### Environment Variables
 
 ```bash
-export TORCHINDUCTOR_FREEZING=0
+export TORCHINDUCTOR_FREEZING=1 # Only supported from vLLM version 0.12.0 onwards.
 # vLLM CPU settings
 export VLLM_CPU_KVCACHE_SPACE=90  # GB for KV cache
 export VLLM_CPU_OMP_THREADS_BIND=0-95  # CPU cores to use
