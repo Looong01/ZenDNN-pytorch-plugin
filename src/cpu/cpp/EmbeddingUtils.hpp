@@ -43,24 +43,25 @@ inline void zen_quant_embed_tensor_check(const at::Tensor &weight,
                  "ZenDNN EmbeddingBag expects dense tensor inputs!");
 }
 
+inline embag_algo_t mode_to_embag_algo(int64_t mode) {
+  switch (mode) {
+  case EMBEDDING_BAG_ALGO::SUM:
+    return embag_algo_t::sum;
+  case EMBEDDING_BAG_ALGO::MEAN:
+    return embag_algo_t::mean;
+  case EMBEDDING_BAG_ALGO::MAX:
+    return embag_algo_t::max;
+  default:
+    return embag_algo_t::none;
+  }
+}
+
 inline void set_embedding_context_attributes(
     embag_context_t &embedding_context, tensor_t &table, const int64_t &mode,
     const bool &include_last_offset, const int64_t &padding_idx,
     const bool &per_sample_weights_defined) {
   embedding_context.set_param("table", table);
-  switch (mode) {
-  case EMBEDDING_BAG_ALGO::SUM:
-    embedding_context.set_algo(embag_algo_t::sum);
-    break;
-  case EMBEDDING_BAG_ALGO::MEAN:
-    embedding_context.set_algo(embag_algo_t::mean);
-    break;
-  case EMBEDDING_BAG_ALGO::MAX:
-    embedding_context.set_algo(embag_algo_t::max);
-    break;
-  default:
-    break;
-  }
+  embedding_context.set_algo(mode_to_embag_algo(mode));
   embedding_context.set_include_last_offset(include_last_offset ? 1 : 0)
       .set_padding_index(padding_idx)
       .set_is_weights(per_sample_weights_defined);

@@ -10,12 +10,12 @@ using namespace zendnnl::interface;
 
 namespace zentorch {
 at::Tensor
-zendnnl_embeddingbag_impl(const at::Tensor &weight, const at::Tensor &indices,
-                          const at::Tensor &offsets, bool scale_grad_by_freq,
-                          int64_t mode, bool sparse,
-                          c10::optional<at::Tensor> per_sample_weights_opt,
-                          bool include_last_offset, int64_t padding_idx,
-                          std::string zentorch_op_name) {
+zentorch_embedding_bag(const at::Tensor &weight, const at::Tensor &indices,
+                       const at::Tensor &offsets, bool scale_grad_by_freq,
+                       int64_t mode, bool sparse,
+                       c10::optional<at::Tensor> per_sample_weights_opt,
+                       bool include_last_offset, int64_t padding_idx,
+                       std::string zentorch_op_name) {
 
   LOG(INFO) << "[" << __FILE__ << ": " << __LINE__ << "] "
             << "Executing function: " << __FUNCTION__;
@@ -25,7 +25,7 @@ zendnnl_embeddingbag_impl(const at::Tensor &weight, const at::Tensor &indices,
   int dim_embedding = weight.sizes()[1];
   int num_bags = offsets.sizes()[0];
 
-  if (include_last_offset == true) {
+  if (include_last_offset) {
     num_bags -= 1;
   }
 
@@ -54,43 +54,19 @@ zendnnl_embeddingbag_impl(const at::Tensor &weight, const at::Tensor &indices,
     params.dtypes.output = get_zendnnl_dtype(output);
     params.dtypes.indices = get_zendnnl_dtype(indices);
     params.dtypes.offsets = get_zendnnl_dtype(offsets);
-
-    // Use algo directly (embag_algo_t is aliased to ops::embag_algo_t)
-    switch (mode) {
-    case EMBEDDING_BAG_ALGO::SUM:
-      params.algo = embag_algo_t::sum;
-      break;
-    case EMBEDDING_BAG_ALGO::MEAN:
-      params.algo = embag_algo_t::mean;
-      break;
-    case EMBEDDING_BAG_ALGO::MAX:
-      params.algo = embag_algo_t::max;
-      break;
-    default:
-      // Assigning sum as the default algorithm as that is seen in
-      // native_functions.yaml file in Pytorch
-      // https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/native_functions.yaml
-      // func: embedding_bag(Tensor weight, Tensor indices, Tensor offsets, bool
-      // scale_grad_by_freq=False, int mode=0, bool sparse=False, Tensor?
-      // per_sample_weights=None, bool include_last_offset=False)
-      LOG(WARNING) << "Invalid embedding bag algorithm: " << mode
-                   << ". Using default algorithm: sum";
-      params.algo = embag_algo_t::sum;
-      break;
-    }
+    params.algo = mode_to_embag_algo(mode);
 
     // Set dimensions
     params.num_embeddings = weight.sizes()[0];
     params.embedding_dim = weight.sizes()[1];
     params.num_indices = indices.sizes()[0];
-    params.num_bags =
-        include_last_offset ? offsets.sizes()[0] - 1 : offsets.sizes()[0];
+    params.num_bags = num_bags;
     params.is_weights = per_sample_weights_defined;
     params.include_last_offset = include_last_offset;
     params.padding_idx = padding_idx;
     params.num_threads = 0; // Use default (omp_get_max_threads)
     params.fp16_scale_bias = true;
-    params.dst_stride = output.strides()[0];
+    params.dst_stride = dim_embedding;
 
     // Call LOWOHA embedding_bag_direct API
     status_t status = zendnnl::lowoha::embag::embedding_bag_direct(
@@ -153,20 +129,7 @@ zendnnl_embeddingbag_impl(const at::Tensor &weight, const at::Tensor &indices,
   return output;
 }
 
-at::Tensor
-zentorch_embedding_bag(const at::Tensor &weight, const at::Tensor &indices,
-                       const at::Tensor &offsets, bool scale_grad_by_freq,
-                       int64_t mode, bool sparse,
-                       c10::optional<at::Tensor> per_sample_weights_opt,
-                       bool include_last_offset, int64_t padding_idx,
-                       std::string zentorch_op_name) {
-  return zendnnl_embeddingbag_impl(weight, indices, offsets, scale_grad_by_freq,
-                                   mode, sparse, per_sample_weights_opt,
-                                   include_last_offset, padding_idx,
-                                   zentorch_op_name);
-}
-
-std::vector<at::Tensor> zendnnl_horizontal_embedding_bag_group_impl(
+std::vector<at::Tensor> zentorch_horizontal_embedding_bag_group(
     at::TensorList weight, at::TensorList indices, at::TensorList offsets,
     at::IntArrayRef scale_grad_by_freq, at::IntArrayRef mode,
     at::IntArrayRef sparse,
@@ -179,33 +142,63 @@ std::vector<at::Tensor> zendnnl_horizontal_embedding_bag_group_impl(
 
   int num_eb_ops = weight.size();
   std::vector<at::Tensor> output(num_eb_ops);
+  std::vector<c10::MaybeOwned<at::Tensor>> per_sample_weights_opt_maybe_owned(
+      num_eb_ops);
+  std::vector<at::Tensor> per_sample_weights(num_eb_ops);
+
+  std::vector<const void *> tables_vector(num_eb_ops);
+  std::vector<const void *> indices_vector(num_eb_ops);
+  std::vector<const void *> offsets_vector(num_eb_ops);
+  std::vector<const float *> weights_vector(num_eb_ops);
+  std::vector<void *> dsts_vector(num_eb_ops);
+  std::vector<zendnnl::lowoha::embag::embag_params_t> params_vector(num_eb_ops);
 
   at::parallel_for(0, num_eb_ops, 0, [&](int64_t start, int64_t end) {
-    for (int i = start; i < end; i++) {
-      output[i] = zentorch_embedding_bag(
-          weight[i], indices[i], offsets[i], scale_grad_by_freq[i], mode[i],
-          sparse[i], per_sample_weights_opt[i], include_last_offset[i],
-          padding_idx[i], zentorch_op_name);
+    for (auto i = start; i < end; i++) {
+      tables_vector[i] = weight[i].data_ptr();
+      indices_vector[i] = indices[i].data_ptr();
+      offsets_vector[i] = offsets[i].data_ptr();
+      per_sample_weights_opt_maybe_owned[i] =
+          at::borrow_from_optional_tensor(per_sample_weights_opt[i]);
+      per_sample_weights[i] = *per_sample_weights_opt_maybe_owned[i];
+      weights_vector[i] = per_sample_weights[i].defined()
+                              ? per_sample_weights[i].data_ptr<float>()
+                              : nullptr;
+      int num_bags = offsets[i].sizes()[0];
+      if (include_last_offset[i]) {
+        num_bags -= 1;
+      }
+      int dim_embedding = weight[i].sizes()[1];
+      output[i] = at::detail::empty_strided_cpu(
+          {num_bags, dim_embedding}, {dim_embedding, 1}, weight[i].options());
+      dsts_vector[i] = output[i].data_ptr();
+      params_vector[i].dtypes.table = get_zendnnl_dtype(weight[i]);
+      params_vector[i].dtypes.output = get_zendnnl_dtype(output[i]);
+      params_vector[i].dtypes.indices = get_zendnnl_dtype(indices[i]);
+      params_vector[i].dtypes.offsets = get_zendnnl_dtype(offsets[i]);
+      params_vector[i].algo = mode_to_embag_algo(mode[i]);
+      params_vector[i].num_embeddings = weight[i].sizes()[0];
+      params_vector[i].embedding_dim = dim_embedding;
+      params_vector[i].num_indices = indices[i].sizes()[0];
+      params_vector[i].num_bags = num_bags;
+      params_vector[i].is_weights = per_sample_weights[i].defined();
+      params_vector[i].include_last_offset = include_last_offset[i];
+      params_vector[i].padding_idx = padding_idx[i];
+      params_vector[i].fp16_scale_bias = true;
+      params_vector[i].dst_stride = dim_embedding;
     }
   });
+
+  status_t status = zendnnl::lowoha::embag::group_embedding_bag_direct(
+      tables_vector, indices_vector, offsets_vector, weights_vector,
+      dsts_vector, params_vector);
+
+  ZENTORCH_CHECK(status == status_t::success,
+                 "LOA-operator for group embedding bag failed.");
 
   LOG(INFO) << "Finished executing: " << __FUNCTION__ << "!\n";
 
   return output;
-}
-
-std::vector<at::Tensor> zentorch_horizontal_embedding_bag_group(
-    at::TensorList weight, at::TensorList indices, at::TensorList offsets,
-    at::IntArrayRef scale_grad_by_freq, at::IntArrayRef mode,
-    at::IntArrayRef sparse,
-    c10::List<c10::optional<at::Tensor>> per_sample_weights_opt,
-    at::IntArrayRef include_last_offset, at::IntArrayRef padding_idx,
-    std::string zentorch_op_name) {
-
-  return zendnnl_horizontal_embedding_bag_group_impl(
-      weight, indices, offsets, scale_grad_by_freq, mode, sparse,
-      per_sample_weights_opt, include_last_offset, padding_idx,
-      zentorch_op_name);
 }
 
 TORCH_LIBRARY_FRAGMENT(zentorch, m) {
