@@ -11,11 +11,28 @@ from torch.torch_version import __version__ as runtime_torchversion
 # necessary to error out if the runtime Pytorch version
 # differs from the build-time version.
 
-if runtime_torchversion[:3] != buildtime_torchversion[:3]:
+
+def _get_minor_version(torch_version):
+    """Return the major.minor portion from a PyTorch version string.
+    Examples: '2.9.1+cpu' -> '2.9', '2.10.0+cpu' -> '2.10'.
+    """
+    parts = torch_version.split(".")
+    if len(parts) < 2:
+        raise ImportError(
+            f"Unexpected PyTorch version string {torch_version!r}. "
+            "Expected at least major.minor (e.g., 2.9.1 or 2.10.0)."
+        )
+    return f"{parts[0]}.{parts[1]}"
+
+
+_runtime_minor = _get_minor_version(runtime_torchversion)
+_buildtime_minor = _get_minor_version(buildtime_torchversion)
+
+if _runtime_minor != _buildtime_minor:
     raise ImportError(
         f"Incompatible PyTorch version {runtime_torchversion} detected. "
         f"The installed zentorch binary is only compatible "
-        f"with PyTorch versions {buildtime_torchversion[:3]}.x"
+        f"with PyTorch versions {_buildtime_minor}.x"
     )
 
 from ._optimize import optimize  # noqa
